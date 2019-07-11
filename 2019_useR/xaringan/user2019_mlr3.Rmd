@@ -51,7 +51,7 @@ knitr::include_graphics(c("https://www.statistik.tu-dortmund.de/fileadmin/_proce
 ]
 
 .center.font150[
-[**bit.ly/2LTI2P8**](https://bit.ly/2LTI2P8)
+[**bit.ly/2LMwE7W**](https://bit.ly/2LMwE7W)
 ]
 ---
 
