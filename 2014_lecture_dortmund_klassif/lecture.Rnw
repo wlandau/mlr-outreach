@@ -1,0 +1,632 @@
+\documentclass[10pt]{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{csquotes}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{xspace}
+\usepackage{amsmath}
+\usepackage{xspace}
+\usefonttheme{serif}
+\usecolortheme{whale}
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+\definecolor{checkgreen}{HTML}{18A126}
+\definecolor{errorred}{HTML}{FF0000}
+
+\newcommand{\R}{\texttt{R}\xspace}
+\newcommand{\mlr}{\texttt{mlr}\xspace}
+\newcommand{\eg}{e.\,g.\xspace}
+\newcommand{\ie}{i.\,e.\xspace}
+\newcommand{\cf}{cf.\xspace}
+
+\title[mlr]{mlr: Machine Learning in R}
+\author{Michel~Lang, Bernd~Bischl, Jakob~Richter}
+\date{}
+
+\begin{document}
+
+<<setup, include=FALSE>>=
+library(knitr)
+library(BBmisc)
+library(parallel)
+library(parallelMap)
+library(pls)
+library(mlr)
+library(irace)
+library(rpart)
+library(e1071)
+library(BatchJobs)
+library(kernlab)
+library(ggplot2)
+library(randomForest)
+options(width=56)
+set.seed(1111)
+opts_chunk$set(size = 'footnotesize',
+               cache = TRUE,
+               fig.width=9 * 0.8,
+               fig.height=6 * 0.8,
+               fig.align="center",
+               out.width='.95\\textwidth')
+configureMlr(show.learner.output = FALSE, show.info = FALSE, on.learner.warning = "quiet")
+options(parallelMap.default.show.info = FALSE)
+knit_hooks$set(crop=hook_pdfcrop)
+@
+
+\begin{frame}
+  \frametitle{mlr?}
+
+  \begin{itemize}
+    \item No unifying interface for machine learning in R
+    \item Experiments require lengthy, tedious and error-prone code
+    \item Machine learning is (also) experimental science:\\We need powerful and flexible tools!
+    \item mlr now exists for 3-4 years (or longer?), grown quite large
+    \item Still heavily in development, but official releases are stable
+    \item Was used for nearly all of my papers
+    \item We cannot cover everything today, short intro + overview\\
+      \textbf{Focus: Resampling / model selection / benchmarking!}\\
+  \end{itemize}
+
+\end{frame}
+
+
+
+\begin{frame}{mlr?}
+\begin{itemize}
+  \item Machine learning experiments are well structured
+  \item Definition by plugging operators together (e.g., Weka or RapidMiner):
+    \includegraphics[width=0.9\textwidth]{figure/rapidminer.png}
+\end{itemize}
+\begin{center}
+  \structure{mlr: abstractions, glue code and some own implementations}
+\end{center}
+\end{frame}
+
+\begin{frame}{The mlr Team}
+  \begin{block}{}
+    \begin{itemize}
+      \item Bernd Bischl (Dortmund)
+      \item Michel Lang (Dortmund)
+      \item Jakob Richter (Dortmund)
+      \item Lars Kotthoff (Cork)
+      \item Julia Schiffner (Duesseldorf)
+      \item Eric Studerus (Basel)
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Package + Documentation}
+
+  \begin{block}{Main project page on Github}
+    \begin{itemize}
+      \item URL: \url{https://github.com/berndbischl/mlr}
+      \item Contains further links, tutorial, issue tracker.
+      \item Official versions are released to CRAN.
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{How to install}
+    \begin{itemize}
+      \item  \verb|install.packages("mlr")|
+      \item  \verb|install_github("mlr", username = "berndbischl")|
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Documentation}
+   \begin{itemize}
+      \item Tutorial on project page (still growing)
+      \item R docs and examples in HTML on project page (and in package)
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \begin{block}{}
+    \begin{itemize}
+      \item Disclaimer:\\
+        Slides are here to remind me of what I want to show you.
+      \item And the covered examples have to be short.
+      \item Refer to tutorial, examples and technical docs later!
+    \end{itemize}
+  \end{block}
+
+  \begin{center}
+    \textbf{Hence: Let's explore the web material a bit!}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Features I}
+
+  \begin{block}{}
+    \begin{itemize}
+      \item Clear S3 / object oriented interface
+      \item Easy extension mechanism through S3 inheritance
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{}
+    \begin{itemize}
+      \item Abstract description of learners and data by properties
+      \item Description of data and task
+      \item Many convenience methods, generic building blocks for own experiments
+      \item Resampling like bootstrapping, cross-validation and subsampling
+      \item Easy tuning of hyperparameters
+      \item Variable selection
+      \item Benchmark experiments with 2 levels of resampling
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Features II}
+
+  \begin{block}{}
+    \begin{itemize}
+      \item Growing tutorial / examples
+      \item Extensive unit-testing (testthat)
+      \item Extensive argument checks to help user with errors
+      \item Parallelization through parallelMap (local, socket, MPI and BatchJobs modes)
+        \begin{itemize}
+          \item Parallelize experiments without touching code
+          \item Job granularity can be changed, e.g., so jobs don't complete too early
+        \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Remarks on S3}
+
+  \begin{block}{}
+    \begin{itemize}
+      \item Not much needed (for usage)
+      \item Makes extension process easy
+      \item Extension is explained in tutorial
+      \item If you simply use the package, you don't really need to care!
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+<<gatherSummary,include=FALSE>>=
+ee = as.environment("package:mlr")
+nl = table(sub("^makeRLearner\\.([[:alpha:]]+)\\..+", "\\1", methods("makeRLearner")))
+nm = sapply(list(classif = listMeasures("classif"), regr = listMeasures("regr"), surv = listMeasures("surv"), cluster = listMeasures("cluster")), length) - 4
+@
+
+\begin{frame}[containsverbatim]{Task Abstractions}
+  \begin{itemize}
+    \item Regression, (cos-sens.) classification, clustering, survival tasks
+    \item Internally: data frame with annotations: target column(s), weights, misclassification costs, \ldots)
+  \end{itemize}
+<<task>>=
+task = makeClassifTask(data = iris, target = "Species")
+print(task)
+@
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+  \begin{itemize}
+    \item \Sexpr{nl["classif"]}~classification, \Sexpr{nl["cluster"]}~clustering, \Sexpr{nl["regr"]}~regression, \Sexpr{nl["surv"]}~survival
+    \item Reduction algorithms for cost-sensitive
+    \item Internally: functions to train and predict, parameter set and annotations
+  \end{itemize}
+<<learner>>=
+lrn = makeLearner("classif.rpart")
+print(lrn)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+<<parmset>>=
+getParamSet(lrn)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+<<listlrns1>>=
+head(listLearners("classif", properties = c("prob", "multiclass")))
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+<<listlrns2>>=
+head(listLearners(iris.task))
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Performance Measures}
+\begin{itemize}
+  \item \Sexpr{nm["classif"]}~classification, \Sexpr{nm["regr"]}~regression, \Sexpr{nm["surv"]}~survival
+  \item Internally: performance function, aggregation function and annotations
+\end{itemize}
+<<measure>>=
+print(mmce)
+print(timetrain)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Performance Measures}
+<<measure2>>=
+listMeasures("classif")
+@
+\end{frame}
+
+\begin{frame}
+  \frametitle{Overview of Implemented Learners}
+
+  \begin{columns}
+
+    \column{0.5\textwidth}
+    \begin{block}{Classification}
+      \begin{itemize}
+        \item LDA, QDA, RDA, MDA
+        \item Trees and forests
+        \item Boosting (different variants)
+        \item SVMs (different variants)
+        \item \ldots
+      \end{itemize}
+    \end{block}
+
+    \begin{block}{Clustering}
+      \begin{itemize}
+        \item K-Means
+        \item EM
+        \item DBscan
+        \item X-Means
+        \item \ldots
+      \end{itemize}
+    \end{block}
+
+    \column{0.4\textwidth}
+    \begin{block}{Regression}
+      \begin{itemize}
+        \item Linear, lasso and ridge
+        \item Boosting
+        \item Trees and forests
+        \item Gaussian processes
+        \item \ldots
+      \end{itemize}
+    \end{block}
+
+    \begin{block}{Survival Analysis}
+      \begin{itemize}
+        \item Cox-PH
+        \item Cox-Boost
+        \item Random survival forest
+        \item Penalized regression
+        \item \ldots
+      \end{itemize}
+    \end{block}
+  \end{columns}
+
+  \textbf{Much better documented on web page, let's go there!}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example}
+
+  \begin{block}{}
+    \begin{center}\begin{Large}
+      ex1.R: Training and prediction
+    \end{Large}\end{center}
+  \end{block}
+
+\end{frame}
+
+
+  % \begin{block}{}
+  % \begin{center}\begin{Large}
+  % ex2.R: Probabilities and ROC
+  % \end{Large}\end{center}
+% \end{block}
+
+
+\begin{frame}\frametitle{Resampling}
+  \begin{columns}
+
+    \column{0.4\textwidth}
+    \begin{block}{}
+      \begin{itemize}
+        \item Hold-Out
+        \item Cross-validation
+        \item Bootstrap
+        \item Subsampling
+        \item Stratification
+        \item Blocking
+        \item and quite a few extensions
+      \end{itemize}
+    \end{block}
+
+    \column{0.6\textwidth}
+    \begin{figure}
+      \includegraphics[width=6cm]{figure/bs.png}
+    \end{figure}
+
+  \end{columns}
+\end{frame}
+
+\begin{frame}[containsverbatim]{Resampling}
+\begin{itemize}
+  \item Resampling techniques: CV, Bootstrap, Subsampling, \ldots
+<<rdesc>>=
+cv3f = makeResampleDesc("CV", iters = 3, stratify = TRUE)
+@
+  \item 10-fold CV of rpart on iris
+<<resample>>=
+lrn = makeLearner("classif.rpart")
+cv10f = makeResampleDesc("CV", iters = 10)
+measures = list(mmce, acc)
+
+resample(lrn, task, cv10f, measures)$aggr
+
+crossval(lrn, task)$aggr
+@
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example}
+
+  \begin{block}{}
+    \begin{center}\begin{Large}
+      ex2.R: Resampling
+    \end{Large}\end{center}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}[containsverbatim]{Benchmarking}
+\begin{itemize}
+  \item Compare multiple learners on multiple tasks
+  \item Fair comparisons: same training and test sets for each learner
+\end{itemize}
+<<benchmark>>=
+data("Sonar", package = "mlbench")
+tasks = list(
+  makeClassifTask(data = iris, target = "Species"),
+  makeClassifTask(data = Sonar, target = "Class")
+)
+learners = list(
+  makeLearner("classif.rpart"),
+  makeLearner("classif.randomForest"),
+  makeLearner("classif.ksvm")
+)
+
+benchmark(learners, tasks, cv10f, mmce)
+@
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example}
+
+  \begin{block}{}
+  \begin{center}\begin{Large}
+  ex3.R: Benchmarking
+  \end{Large}\end{center}
+\end{block}
+
+\end{frame}
+
+\begin{frame}[containsverbatim]{Visualizations}
+<<plotLearner>>=
+plotLearnerPrediction(makeLearner("classif.randomForest"), task,
+  features = c("Sepal.Length", "Sepal.Width"))
+@
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example}
+
+  \begin{block}{}
+    \begin{center}\begin{Large}
+      ex4.R: ROC analysis
+    \end{Large}\end{center}
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Remarks on model selection I}
+
+  \begin{block}{Basic machine learning}
+    \begin{itemize}
+      \item Fit parameters of model to predict new data
+      \item Generalisation error commonly estimated by resampling, e.g. 10-fold cross-validation \\
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{2nd, 3rd, \ldots level of inference}
+    \begin{itemize}
+      \item Comparing inducers or hyperparameters is harder\\
+      \item Feature selection either in 2nd level or adds a 3rd one \ldots
+      \item Statistical comparisons on the 2nd stage are non-trivial
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{}
+    \begin{itemize}
+      \item Still active research
+      \item Very likely that high performance computing is needed
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Tuning / Grid Search / Random search}
+  \begin{block}{Tuning}
+    \begin{itemize}
+      \item Used to find ``best'' hyperparameters for a method in a data-dependend way
+      \item Must be done for some methods, like SVMs  
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Grid search}
+    \begin{itemize}
+      \item Basic method: Exhaustively try all combinations of finite grid
+      \item Inefficient, combinatorial explosion
+      \item Searches large, irrelevant areas
+      \item Reasonable for continuous parameters?
+      \item Still often default method
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Random search}
+    \begin{itemize}
+      \item Randomly draw parameters 
+      \item mlr supports all types and depencies here
+      \item Scales better then grid search
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Example}
+
+  \begin{block}{}
+  \begin{center}\begin{Large}
+  ex4.R: Basic tuning: grid search
+  \end{Large}\end{center}
+\end{block}
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Remarks on Model Selection II}
+
+  \begin{block}{Salzberg (1997): \\ On comparing classifiers: Pitfalls to avoid and a recommended approach}
+    \begin{itemize}
+      \item Many articles do not contain sound statistical methodology
+      \item Compare against enough reasonable algorithms
+      \item Do not just report mean performance values
+      \item Do not cheat through repeated tuning
+      \item Use double cross-validation for tuning and evaluation
+      \item Apply the correct test (assumptions?)
+      \item Adapt for multiple testing
+      \item Think about independence and distributions
+      \item Do not rely solely on UCI $\rightarrow$ We might overfit on it
+  \end{itemize}
+\end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Nested Resampling}
+    
+  \begin{itemize}
+      \item Ensures unbiased results for meta model optimization
+      \item Use this for tuning and feature selection
+  \end{itemize}
+
+  \begin{figure}
+    \includegraphics[width=8cm]{figure/nested.png}
+  \end{figure}
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Example}
+
+  \begin{block}{}
+  \begin{center}\begin{Large}
+  ex5.R: Tuning + nested resampling via wrappers
+  \end{Large}\end{center}
+\end{block}
+
+\end{frame}
+
+\begin{frame}[containsverbatim]{Parallelization}
+  \begin{itemize}
+    \item Activate with \texttt{parallelMap::parallelStart}
+    \item Backends: \texttt{local}, \texttt{multicore}, \texttt{socket}, \texttt{mpi} and \texttt{BatchJobs}
+<<parallelMap,eval=FALSE>>=
+parallelStart("BatchJobs")
+benchmark([...])
+parallelStop()
+@
+    \item Parallelization levels
+<<registeredlevels>>=
+parallelShowRegisteredLevels()
+@
+      Defaults to first possible / most outer loop
+    \item Few iterations in benchmark (loop over \texttt{learners} $\times$ \texttt{tasks}), many in resampling
+<<parallelLevels, eval=FALSE>>=
+parallelStart("multicore", level = "mlr.resample")
+@
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Parallelization}
+  \begin{itemize}
+    \item parallelMap is documented here: \url{https://github.com/berndbischl/parallelMap}
+    \item BatchJobs is documented here: \url{https://github.com/tudo-r/BatchJobs}\\
+      Make sure to read the Wiki page for Dortmund!
+  \end{itemize}
+    
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example}
+
+  \begin{block}{}
+  \begin{center}\begin{Large}
+  ex6.R: Parallelization
+  \end{Large}\end{center}
+\end{block}
+
+\end{frame}
+
+\begin{frame}\frametitle{Outlook / Not Shown Today I}
+
+  \begin{block}{}
+    \begin{itemize}
+      \item Regression
+      \item Survival analysis
+      \item Clustering
+      \item Regular cost-sensitive learning (class-specific costs)
+      \item Cost-sensitive learning (example-dependent costs)
+      \item Smarter tuning algorithms \\
+        CMA-ES, iterated F-facing, model-based optimization \ldots
+      \item Multi-critera optimization
+      \item \ldots
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}\frametitle{Outlook / Not Shown Today II}
+
+  \begin{block}{}
+    \begin{itemize}
+      \item Variable selection\\
+        Filters: Simply imported available R methods\\
+        Wrappers: Forward, backward, stochastic search, GAs\\
+      \item Bagging for arbitary base learners
+      \item Generic imputation for missing values
+      \item Wrapping / tuning of preprocessing
+      \item Over / Undersampling for unbalanced class sizes
+      \item mlr connection to OpenML
+      \item \ldots
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+
+\end{document}
+

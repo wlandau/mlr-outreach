@@ -1,0 +1,44 @@
+\begin{tikzpicture}[auto]
+  % styles
+  \tikzstyle{userinput}=[rectangle, drop shadow, draw=black, fill=black!10, thick, minimum width=4cm, align=center]
+
+  \tikzstyle{internal}=[rectangle, drop shadow, draw=black, fill=white, thick, minimum width=4cm, rounded corners, align=center]
+  \tikzstyle{result}=[ellipse, drop shadow, draw=black, fill=white, thick, align=center]
+  \tikzstyle{line} = [draw, thick, -latex']
+  \tikzstyle{sline} = [draw, thick, -latex',decorate, decoration={snake, segment length=2mm,post length=2mm}]
+
+  \matrix [row sep=10mm, column sep=15mm] {
+    % first row
+    \node {}; &
+    \node {}; &
+    \node [result] (result) {\Large{(intermediate) result}}; \\
+
+    % second row
+    \node [userinput] (static_problem_part) {
+        static problem part
+    }; &
+  \node [userinput] (dynamic_problem_part) {
+          dynamic problem function
+	}; &
+	\node [userinput] (algorithm) {
+        algorithm function
+	}; \\
+
+	% third row
+	\node {}; &
+    \node [userinput] (problem_design) {
+        problem design
+    }; &
+	\node [userinput] (algorithm_design) {
+        algorithm design
+	}; \\
+  };
+
+  \draw [sline] (algorithm) to (result) ;
+  \draw [line] (static_problem_part) to (dynamic_problem_part);
+  \draw [sline] (dynamic_problem_part) to node {problem} node [swap] {instance} (algorithm) ;
+  \draw [line] (static_problem_part) to [out=0, in=0, bend left=20] (algorithm);
+
+  \draw [sline] (problem_design) to (dynamic_problem_part);
+  \draw [sline] (algorithm_design) to (algorithm);
+\end{tikzpicture}

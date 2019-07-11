@@ -1,0 +1,86 @@
+\documentclass[10pt]{beamer}
+
+%% include header:
+\input{./header}
+
+%% include template:
+\input{./templates/metropolis_cert}
+
+
+%% Title:
+%% ----------------------------------------
+
+\title{Functional Data with \texttt{mlr}}
+\date{\today}
+\author{Florian Pfisterer \& Xudong Sun \& Laura Beggel}
+\institute{LMU Munich\\Working Group Computational Statistics}
+
+%% Wrap Shaded around Shunk to have a nices R output:
+%% --------------------------------------------------
+
+\let\Oldkframe\kframe
+\let\endOldkframe\endkframe
+
+\renewenvironment{kframe}
+ {\scriptsize\definecolor{shadecolor}{RGB}{240,240,240}\begin{Shaded}\Oldkframe}
+ {\endOldkframe\end{Shaded}\normalsize}
+
+%% Prevent code from printing over margin:
+%% --------------------------------------------------
+
+<<echo=FALSE>>=
+options(width=60)
+@
+
+%% Content:
+%% ----------------------------------------
+
+\begin{document}
+
+<<include=FALSE>>=
+set.seed(4343)
+library(knitr)
+library(ggplot2)
+library(mlr)
+library(magrittr)
+@
+
+
+\maketitle
+
+\begin{frame}[plain]{Table of contents}
+	\setbeamertemplate{section in toc}[sections numbered]
+	\tableofcontents[hideallsubsections]
+\end{frame}
+
+\section{Introduction}
+
+<<child="chapters/intro.Rnw">>=
+@
+
+
+\section{Regression \& Classification}
+
+<<child="chapters/regr_classif.Rnw">>=
+@
+
+\section{Feature Extraction}
+
+<<child="chapters/featextract.Rnw">>=
+@
+
+\section{Benchmark}
+
+<<child="chapters/benchmark.Rnw">>=
+@
+
+\section{Outlook}
+<<child="chapters/outlook.Rnw">>=
+@
+
+<<child="chapters/appendix.Rnw">>=
+@
+
+\end{document}
+
+

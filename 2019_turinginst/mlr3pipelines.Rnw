@@ -1,0 +1,288 @@
+\Sexpr{set_parent('talk.Rnw')}
+\newcommand{\boltt}[1]{{\ttfamily \fontseries{b}\selectfont #1}}
+
+<<include=FALSE>>=
+  # avoid annoying pkg load messages by loading all the things here
+library("mlr3pipelines")
+library("mlr3")
+library("mlr3learners")
+library("paradox")
+task = mlr_tasks$get("iris")
+learner = mlr_learners$get("classif.rpart")
+train = 1:120; test = 121:150
+
+@
+
+\begin{vframe}{Machine Learning Pipelines}
+  \begin{blocki}{}
+    \item
+      Many Machine Learning Workflows consist of multiple steps, such as preprocessing, computing features, or imputing missing data. Model predictions may get aggregated or could be used for additional modeling steps (``Stacking'').
+
+    \item
+      This is often a long winded and complicated process. Just as \pkg{mlr3} abstracts away the learning algorithm from model fitting, we want to abstract away the data handling methods in ML pipelines.
+
+    \item
+      Properly separating train and test data becomes difficult but is important for accurate performance estimation when doing resampling, benchmarks, or tuning.
+
+    \item
+      \pkg{mlr3pipelines} allow us to specify many steps that are often undertaken in a few, concise lines
+
+    \item
+      By integrating pipelines with \pkg{mlr3} and \pkg{mlr3tuning} we can tune over the joint hyperparameter space of models and preprocessing steps.
+  \end{blocki}
+\end{vframe}
+
+\begin{frame}{PipeOp}
+  \begin{blocki}{}
+    \item
+      Multiple widely used operations (Scaling, PCA, Variable Selection, Imputation, and many others) are provided as \boltt{PipeOp}s.
+    \item
+      \texttt{PipeOp}s have a \boltt{\$train()} function (on training data) and a \boltt{\$predict()} function (for testing phase or new data).
+  \end{blocki}
+  \begin{overprint}
+  \includegraphics<1>[page=1, width=\textwidth, trim=100 0 0 160, clip]{mlr3Pipelines_graphics}
+  \includegraphics<2>[page=2, width=\textwidth, trim=100 0 0 160, clip]{mlr3Pipelines_graphics}
+  \end{overprint}
+\end{frame}
+
+\begin{vframe}{PipeOp}
+<<>>=
+traintask_in = mlr_tasks$get("iris")$filter(1:100)
+predtask_in = mlr_tasks$get("iris")$filter(101:150)
+
+poscale = PipeOpScale$new()
+
+traintask_out = poscale$train(list(traintask_in))
+predtask_out = poscale$predict(list(predtask_in))
+
+poscale$state
+@
+\end{vframe}
+
+\begin{frame}{Pipelines and Graphs}
+  \begin{blocki}{}
+    \item<1->
+      We can encapsulate an \pkg{mlr3} \texttt{Learner} in a \boltt{PipeOpLearner}, so we can build complete processing pipelines that take data and return predictions.
+    \item<2->
+      Multiple \texttt{PipeOp}s can be chained using the \boltt{\%>\/>\%} operator. The resulting pipeline is not necessarily linear, so we call the result a \boltt{Graph}.
+    \item<3->
+      The \texttt{Graph} can be wrapped using \boltt{GraphLearner}, so from the outside it looks like a normal \pkg{mlr3} \texttt{Learner} (for resampling, benchmarking, parameter tuning).
+    \end{blocki}
+    \begin{overprint}
+      \includegraphics<1>[page=3, width=.85\textwidth, trim=50 140 0 35, clip]{mlr3Pipelines_graphics}
+      \includegraphics<2>[page=4, width=.85\textwidth, trim=50 140 0 35, clip]{mlr3Pipelines_graphics}
+      \includegraphics<3>[page=5, width=.85\textwidth, trim=50 140 0 35, clip]{mlr3Pipelines_graphics}
+    \end{overprint}
+\end{frame}
+
+\begin{vframe}{Pipelines and Graphs}
+<<>>=
+graph = mlr_pipeops$get("scale") %>>%
+  mlr_pipeops$get("encode",
+    param_vals = list(method = "one-hot")) %>>%
+  mlr_pipeops$get("impute",
+    param_vals = list(method_num = "median")) %>>%
+  mlr_pipeops$get("learner",
+    learner = mlr_learners$get("classif.glmnet"))
+
+glrn = GraphLearner$new(graph)
+@
+<<size = "scriptsize">>=
+print(glrn)
+@
+\end{vframe}
+
+\begin{frame}{GraphLearner Dataflow}
+  \begin{blocki}{}
+  \item<1->
+    \texttt{\$train()}ing such a \texttt{Graph} sets the \texttt{\$state} of all \texttt{PipeOp}s (and trains the \texttt{Learner} model).
+  \item<2->
+    \texttt{\$predict()} with a new dataset makes the \texttt{Learner}-\texttt{PipeOp} generate a \boltt{Prediction}. This \texttt{Prediction} is returned by the \texttt{GraphLearner}, which therefore behaves like an ordinary \texttt{Learner}.
+  \end{blocki}
+  \begin{overprint}
+    \includegraphics<1>[page=6, width=\textwidth, trim=0 80 0 70, clip]{mlr3Pipelines_graphics}
+    \includegraphics<2>[page=8, width=\textwidth, trim=0 80 0 70, clip]{mlr3Pipelines_graphics}
+  \end{overprint}
+\end{frame}
+
+\begin{vframe}{GraphLearner Dataflow}
+<<>>=
+e = Experiment$new(task, glrn)
+e$train(train)$predict(test)$score()
+@
+<<>>=
+e$model$pipeops$scale$state
+@
+\end{vframe}
+
+\begin{vframe}{Hyperparameters and Tuning}
+  \begin{blocki}{}
+    \item
+      Just like \texttt{Learner}s, \texttt{PipeOp}s can have \emph{hyperparameters} that influence their behaviour.
+    \item
+      \texttt{Graph}s and \texttt{GraphLearner}s expose all hyperparameters of all components enclosed by them. This makes tuning possible.
+  \end{blocki}
+<<>>=
+mlr_pipeops$get("scale")$param_set
+@
+\end{vframe}
+
+\begin{vframe}{Hyperparameters and Tuning}
+<<size = "footnotesize", R.options=list(max.print=50)>>=
+glrn$param_set # scale %>>% encode %>>% impute %>>% glmnet
+@
+\end{vframe}
+
+\begin{vframe}{Hyperparameters and Tuning}
+<<>>=
+# Evaluation method: Cross Validation
+cv10 = mlr_resamplings$get("cv")
+
+# search space
+library("paradox")
+ps = ParamSet$new(list(
+  ParamLgl$new("scale.scale"),
+  ParamFct$new("classif.glmnet.s",
+    levels = c("lambda.1se", "lambda.min"))
+))
+
+# Tuning library
+library("mlr3tuning")
+ff = PerformanceEvaluator$new(task, glrn, cv10, ps)
+tuner = TunerGridSearch$new(ff,
+  TerminatorEvaluations$new(4))
+@
+\end{vframe}
+\begin{vframe}{Hyperparameters and Tuning}
+% ***********************************************************
+% This is the slowest slide of all; for faster slide
+% generation (e.g. trial and error stuff), set 'eval = FALSE'
+% ***********************************************************
+<<eval = TRUE>>=
+result = tuner$tune()$tune_result()
+result$performance
+result$values[names(ps$params)]
+@
+\end{vframe}
+
+
+\begin{frame}{Bigger Graphs}
+  \begin{blocki}{}
+  \item
+    \texttt{PipeOp}s not only work on data (\texttt{Task}s), but also on \texttt{Prediction}s.
+  \item
+    Actual Graphs can be built through \texttt{PipeOp}s that split or combine data to / from multiple \emph{channels}.
+  \item
+    Consider \emph{Bagging}:
+  \end{blocki}
+    \includegraphics<1>[page=9, width=\textwidth, trim=0 80 0 70, clip]{mlr3Pipelines_graphics}
+\end{frame}
+\begin{vframe}{Bigger Graphs}
+<<>>=
+# the path [subsample %>>% rpart]
+single_path = mlr_pipeops$get("subsample") %>>%
+  mlr_pipeops$get("learner",
+    learner = mlr_learners$get("classif.rpart"))
+
+# repeat this element [n] times. We keep it simple: n = 3
+all_paths = greplicate(single_path, n = 3)
+
+graph = all_paths %>>% mlr_pipeops$get("majorityvote",
+  innum = 3)
+@
+\end{vframe}
+
+\begin{vframe}{Graph Representation}
+  \begin{blocki}{}
+  \item
+    The Textual Representation of Graphs can get complicated$\ldots$
+  \end{blocki}
+<<size = "scriptsize">>=
+print(graph)
+@
+\end{vframe}
+
+\begin{vframe}{Graph Representation}
+  \begin{blocki}{}
+  \item
+    $\ldots$but \pkg{igraph} helps with plots:
+  \end{blocki}
+<<out.width = '0.9\\textwidth', out.height = '0.55\\textwidth', fig.width = 9/1.4, fig.height = 5.5/1.4, echo = 2>>=
+par(mar=c(0,0,0,0))
+graph$plot()
+@
+\end{vframe}
+
+
+\begin{vframe}{Even Bigger Graphs!}
+  \begin{blocki}{}
+  \item
+    Treatment-encoded using \boltt{PipeOpEncode} and$\ldots$
+  \item
+    Using \boltt{PipeOpBranch} and \boltt{PipeOpUnbranch} for branched execution: only one of several alternative paths is taken, choosing between$\ldots$
+  \item
+    \boltt{PipeOpScale}, \boltt{PipeOpPca}, or \boltt{PipeOpNull} (i.e. no preprocessing), then$\ldots$
+  \item
+    copying the result to three simultaneous paths using \boltt{PipeOpCopy}, which$\ldots$
+  \item
+    perform two different \boltt{PipeOpLearnerCV} operations (plus \boltt{PipeOpNull}), the results of which$\ldots$
+  \item
+    are combined together using \boltt{PipeOpFeatureUnion} and finally$\ldots$
+  \item
+    given to a \boltt{PipeOpLearner}
+  \end{blocki}
+\end{vframe}
+\begin{vframe}{Even Bigger Graphs!}
+<<size = "footnotesize">>=
+graph =
+  mlr_pipeops$get("encode", param_vals = list(method = "treatment")) %>>%
+  mlr_pipeops$get("branch", c("null", "pca", "scale")) %>>%
+  gunion(list(
+      mlr_pipeops$get("null", id = "null1"),
+      mlr_pipeops$get("pca"),
+      mlr_pipeops$get("scale")
+  )) %>>%
+  mlr_pipeops$get("unbranch", c("null", "pca", "scale")) %>>%
+  mlr_pipeops$get("copy", 3) %>>%
+  gunion(list(
+      mlr_pipeops$get("null", id = "null2"),
+      mlr_pipeops$get("learner_cv", mlr_learners$get("regr.rpart")),
+      mlr_pipeops$get("learner_cv", mlr_learners$get("regr.kknn"))
+  )) %>>%
+  mlr_pipeops$get("featureunion", 3) %>>%
+  mlr_pipeops$get("learner", mlr_learners$get("regr.glmnet"))
+@
+\end{vframe}
+\begin{vframe}{Even Bigger Graphs!}
+<<out.width = '0.9\\textwidth', out.height = '0.8\\textwidth', fig.width = 9/1.4, fig.height = 8/1.4, echo = FALSE>>=
+par(mar=c(0,0,0,0))
+graph$plot()
+@
+\end{vframe}
+\begin{vframe}{It Still Works}
+<<>>=
+e = Experiment$new(mlr_tasks$get("boston_housing"),
+  GraphLearner$new(graph, task_type = "regr"))
+e$train()$predict()$score()
+@
+\end{vframe}
+
+\begin{vframe}{\pkg{mlr3pipelines}}
+  \begin{blocki}{Pipelines provide:}
+    \item
+      A modular system and abstraction layer for data (pre-)processing operations
+    \item
+      Multiple individual blocks of widely used operations (Scaling, PCA, Variable Selection, Imputation, Model Averaging, Stacking), along with special Dataflow operations (Branching Execution, Concurrency)
+    \item
+      Ways of treating learning algorithms themselves as just more operations on data
+    \item
+      An intuitive way of constructing operation graphs by using the \texttt{\%>\/>\%}-operator or by adding graph edges directly
+    \item
+      A way to encapsulate operation graphs in \pkg{mlr3} \texttt{Learner}s, with all the benefits enjoyed by these (resampling, benchmarks, tuning)
+    \item
+      A possible abstraction for parallelization
+  \end{blocki}
+Thanks! Questions? Comments? Comment on Github?
+
+\end{vframe}
+

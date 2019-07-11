@@ -1,0 +1,8 @@
+- zuerst Multiclass dann Multilabel
+- eine formale mathematische Notation
+- einfachste triviale Beispiel für Problem Transformation, danach erst die anderen Methoden
+- mlr Code: ein Beispiel ohne erklären, wie train predict usw geht
+- letzte Folie: Benchmark, paper
+- outlook: mit Grafik
+- challenges (Maße)
+- similar projects competitors

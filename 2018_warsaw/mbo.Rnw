@@ -1,0 +1,243 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MBO                               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Expensive Black-Box Optimization}
+  \begin{columns}
+    \begin{column}{0.3 \textwidth}
+      \begin{center}
+        \includegraphics[width = \textwidth]{figure/mbogears.png}
+      \end{center}
+    \end{column}
+    
+    \begin{column}{0.7 \textwidth}
+      \begin{itemize}
+        \item \pkg{mlrMBO} - Bayesian Optimization and Model-Based Optimization - \url{https://github.com/mlr-org/mlrMBO}
+      \end{itemize}
+      
+      \begin{itemize}
+        \item General idea: 
+      \begin{itemize}
+        \item Do some experiments on the black box
+        \item Measure performance
+        \item Model relationship between params and performance by regression
+        \item Optimize surrorgate model to get a new interesting configuration
+        \item Evaluate
+        \item Iterate
+      \end{itemize}
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{vframe}
+
+
+\begin{frame}
+  \begin{figure}[H]
+  \centering %page 1,10
+  \only<1>{\includegraphics[page=1, width=\linewidth]{figure/mbo-example0-1.pdf}}
+  \only<2>{\includegraphics[page=1, width=\linewidth]{figure/mbo-example1-1.pdf}}
+  \only<3>{\includegraphics[page=1, width=\linewidth]{figure/mbo-example2-1.pdf}}
+  \only<4>{\includegraphics[page=1, width=\linewidth]{figure/mbo-example3-1.pdf}}
+  \only<5>{\includegraphics[page=1, width=\linewidth]{figure/mbo-example4-1.pdf}}
+  \only<6>{\includegraphics[page=1, width=\linewidth]{figure/mbo-example20-1.pdf}}
+ \end{figure}
+\end{frame}
+
+
+\begin{vframe}{Hyperparameter Tuning}
+  \begin{center}
+    \includegraphics[width = \textwidth]{figure/mboGrid.png}
+  \end{center}
+\end{vframe}
+
+
+
+\begin{vframe}{mlrMBO}
+  General \pkg{mlrMBO} workflow:
+  \begin{enumerate}
+    \item Define \textbf{objective function} and its parameters 
+    \item Generate \textbf{initial design} (optional)
+    \item Define mlr learner for \textbf{surrogate model} (optional)
+    \item Set up a \textbf{MBO control} object
+    \item Start the optimization with \texttt{mbo()}
+  \end{enumerate}
+  
+      \oneliner{Or use mlr's really simple tuning interface with mbo!}
+
+\end{vframe}
+
+\begin{vframe}{Machine Learning}
+  \begin{itemize}
+    \item Successful, but requires human labor and expertise
+    \begin{itemize}
+      \item Pre-process data
+      \item Select/ engineer features
+      \item Select a model family
+      \item Optimize hyperparameters (algorithm parameters)
+      \item $\cdots$
+    \end{itemize}
+    \item Deep learning lets us automatically learn features
+    \begin{itemize}
+      \item Automates feature engineering step, with large amount of data
+      \item Even more sensitive to architectures, hyperparameters, $\cdots$
+    \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Automatic Machine Learning}
+  \begin{itemize}
+    \item Can algorithms be trained to automatically build end-to-
+end machine learning systems?
+  \end{itemize}
+  
+  \oneliner{Use machine learning to do better machine learning}
+  
+   \begin{itemize}
+    \item Can we turn \\
+   \textit{Solution = data + manual exploration + computation}
+    \item Into \\
+    \textit{Solution = data + computation (x100)}
+  \end{itemize}
+  
+  \framebreak
+  
+  \textbf{Not about automating data scientists}
+  \vspace{3mm}
+    \begin{itemize}
+    \item Efficient exploration of techniques
+    \begin{itemize}
+    \item Automate the tedious aspects (inner loop)
+    \item Make every data scientist a super data scientist
+  \end{itemize}
+    \item Democratisation
+    \begin{itemize}
+    \item Allow individuals, small companies to use machine
+learning effectively (at lower cost)
+\item Open source tools and platforms
+  \end{itemize}
+    \item Data Science
+    \begin{itemize}
+    \item Better understand algorithms, develop better ones
+    \item Self-learning algorithms
+  \end{itemize}
+
+  \end{itemize}
+  
+  
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Machine Learning Pipelines}
+\begin{center}
+  \includegraphics[width = \textwidth]{figure/automl1.png}
+  \end{center}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Automating Machine Learning Pipelines}
+\begin{center}
+  \includegraphics[width = \textwidth]{figure/automl2.png}
+  \end{center}
+  \end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Automatic Machine Learning: Techniques}
+  \begin{itemize}
+    \item \textbf{Bayesian Optimization:} Intelligently optimize pipelines/ architectures by iteratively choosing better ones
+\item \textbf{Genetic algorithms:} Evolve pipelines/architectures to work better for a given application
+\item \textbf{Meta-learning:} learn from previous applications to predict useful pipelines/ architectures for new problems
+\item \textbf{Transfer Learning:} train models on one problem, then transfer (parts) of good solutions to solve new problems.
+\item \textbf{Reinforcement Learning:} Train many models, use performance as "reward" for certain approaches
+\item \textbf{Combinations of all of these}
+  \end{itemize}
+\end{vframe}
+
+
+\begin{vframe}{Automatic Machine Learning: Parameters}
+
+\vspace{-0.5cm}
+\begin{figure}[t]
+\center 
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=3cm,
+                    thick,circ/.style={circle,draw,font=\sffamily\scriptsize},
+                    rect/.style={rectangle,draw,font=\sffamily\scriptsize}]
+  \node[rect] (20) at (3, 4.5) {Parameter Set};
+  \node[circ] (18) at (0, 3.5) {cl.weights};
+  \node[circ]  (1) at (6, 3.5) {learner};
+  \node[rect] (19) at (-0.5, 2) {$2^{[-7,...,7)}$};
+  \node[rect]  (2) at (2, 2) {randomForest};
+  \node[rect]  (3) at (4, 2) {L2 LogReg};
+  \node[rect]  (4) at(6, 2) {svm};
+  \node[circ]  (5) at (0, 0.5) {mtry};
+  \node[circ]  (6) at (2, 0.5) {nodesize};
+  \node[circ]  (7) at (4, 0.5) {cost};
+  \node[circ]  (8) at (6, 0.5) {cost};
+  \node[circ]  (9) at(8, 2) {kernel};
+  \node[rect] (10) at (8.5, 1){radial};
+  \node[rect] (17) at (7, 1){linear};
+  \node[circ] (11) at(8, 0) {$\gamma$};
+  \node[rect] (12) at (-0.5, -1) {$\{0.1p,..., 0.9p\}$};
+  \node[rect] (13) at (2, -1) {$\{1,..., 0.5n\}$};
+  \node[rect] (14) at (4, -1) {$2^{[-15, 15]}$};
+  \node[rect] (15) at (6, -1) {$2^{[-15, 15]}$};
+  \node[rect] (16) at (8, -1) {$2^{[-15, 15]}$};
+  \path[every node/.style={font=\sffamily\small}]
+    (1) edge node {}(2)
+        edge node {}(3)
+        edge node {}(4)
+    (2) edge node {}(5)
+        edge node {}(6)
+    (3) edge node {}(7)
+    (4) edge node {}(8)
+        edge node {}(9)
+    (5) edge node {}(12)
+    (6) edge node {}(13)
+    (7) edge node {}(14)
+    (8) edge node {}(15)
+    (9) edge node {}(10)
+        edge node {}(17)
+    (10) edge node {}(11)
+    (11) edge node {}(16)
+    (18) edge node {}(19)
+    (20) edge node {}(1)
+         edge node {}(18);
+\end{tikzpicture}
+\end{figure}
+
+\end{vframe}
+
+
+
+\begin{vframe}{mlrMBO: Model-Based Optimization Toolbox}
+\begin{minipage}{0.4\linewidth}
+    \begin{itemize}
+      \item Any regression from mlr
+      \item Arbtritrary infill
+      \item Mixed-space optimization with categorical and subordinate parameters
+      \item Single - or multi-crit
+      \item Multi-point proposal
+      \item Via parallelMap and batchtools
+        runs on many parallel backends and clusters
+      \item Algorithm configuration
+      \item Active research
+    \end{itemize}
+\end{minipage}
+\begin{minipage}{0.55\linewidth}
+    \includegraphics[width = \textwidth]{figure/mlrMBO1.pdf}
+\end{minipage}
+\end{vframe}
+
+\begin{vframe}{References}
+  \begin{itemize}
+    \item \pkg{mlrMBO} Paper on arXiv (under review) \url{https://arxiv.org/abs/1703.03373}
+    \item Bischl, Wessing et al:\textit{MOI-MBO: Multiobjective infill for parallel
+model-based optimization}, LION 2014
+    \item Horn, Wagner, Bischl et al:\textit{Model-based multi-objective optimization:
+Taxonomy, multi-point proposal, toolbox and benchmark}, EMO 2014
+  \end{itemize}
+\end{vframe}

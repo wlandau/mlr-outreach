@@ -1,0 +1,173 @@
+\begin{vframe}{About}
+  \begin{itemize}
+    \item Project home page\\
+    \oneliner{\url{https://github.com/mlr-org/mlr}}
+      \begin{itemize}
+        \item \textbf{Tutorial} for online viewing / download, including many examples
+        \item R documentation rendered in HTML
+        \item If you are interested you can ask questions in the github issue tracker
+        % \item Wiki page for this tutorial (slides, hands on solutions, \ldots)
+      \end{itemize}
+    \item 8-10 main developers, quite a few contributors, 4 GSOC projects in 2015/16 and 
+    one coming in 2017
+    \item About 20K lines of code, 8K lines of unit tests
+    % \item If you do not have \pkg{mlr} installed yet, please do so (see wiki page)
+      % \item Same for \pkg{OpenML} (not on CRAN, you'll need \pkg{devools}):
+% <<openml-install,eval=FALSE>>=
+% install.packages("devtools")
+% devtools::install_github("openml/r")
+% @
+  \end{itemize}
+\end{vframe}
+
+% \begin{vframe}{Overview}
+  % \tableofcontents
+% \end{vframe}
+
+% \begin{vframe}
+%   \begin{blocki}{What is (supervised) machine learning?}
+%   \item Learning structure in data:\\
+%     Classification, regression, survival analysis, clustering, $\ldots$
+%   \item The art of predicting stuff
+%   \item Model optimization
+%   \item Understanding of grey-box models
+%   \end{blocki}
+% 
+%   \begin{blocki}{Disclaimer}
+%   \item The list is subjective and naively tailored to this talk
+%   \item ML is based on math and statistics, we will (mainly) talk about structure, software, and practical issues here
+%   \end{blocki}
+% \end{vframe}
+
+
+
+% \begin{vframe}{Supervised Classification tasks}
+% <<classification-task-plot,echo=FALSE,fig.height=4>>=
+% set.seed(1)
+% df = data.frame(x = c(rnorm(10, mean = 3), rnorm(10, mean = 5)), y = runif(10), class = rep(c("a", "b"), each = 10))
+% ggplot(df, aes(x = x, y = y, shape = class, color = class)) + geom_point(size = 3) + geom_vline(xintercept = 4, linetype = "longdash")
+% @
+% \structure{Goal}: Predict a class (or membership probabilities)
+% \end{vframe}
+
+
+% \begin{vframe}{Supervised Regression tasks}
+% <<regression-task-plot,echo=FALSE,fig.height=4>>=
+% set.seed(1)
+% f = function(x) 0.5 * x^2 + x + sin(x)
+% x = runif(40, min = -3, max = 3)
+% y = f(x) + rnorm(40)
+% df = data.frame(x = x, y = y)
+% ggplot(df, aes(x, y)) + geom_point(size = 3) + stat_function(fun = f, color = "#FF9999", size = 2)
+% @
+% \structure{Goal}: Predict a continuous output
+% \end{vframe}
+
+
+% \begin{vframe}{Supervised Survival tasks}
+% <<survial-task-plot,echo=FALSE,fig.height=4>>=
+% set.seed(1)
+% data("rats", package = "survival")
+% sf = survfit(Surv(time, status) ~ rx, data = rats)
+% survMisc:::autoplot.survfit(sf, title = "", xLab = "Time", yLab = "$\\hat{S}(t)$\n", survLineSize = 1.5)$plot
+% @
+% \structure{Goal}: Predict a survival function $\hat{S}(t)$, i.e.\ the probability to survive to time point~$t$
+% \end{vframe}
+
+
+% \begin{vframe}{Unsupervised Cluster tasks}
+% <<cluster-task-plot,echo=FALSE,fig.height=4>>=
+% df = iris
+% m = as.matrix(cbind(df$Petal.Length, df$Petal.Width),ncol=2)
+% cl = (kmeans(m,3))
+% df$cluster = factor(cl$cluster)
+% centers = as.data.frame(cl$centers)
+% ggplot(data=df, aes(x=Petal.Length, y=Petal.Width, color=cluster )) +
+%  geom_point() +
+%  geom_point(data=centers, aes(x=V1,y=V2, color='Center')) +
+%  geom_point(data=centers, aes(x=V1,y=V2, color='Center'), size=52, alpha=.3) +
+%  theme(legend.position="none")
+% @
+% \structure{Goal}: Group data into similar clusters (or estimate fuzzy membership probabilities)
+% \end{vframe}
+
+
+% \section{Why mlr?}
+\begin{vframe}{Motivation}
+  \begin{blocki}{The good news}
+  \item CRAN serves hundreds of packages for machine learning
+    % (cf.\ CRAN task view machine learning)
+  \item Often compliant to the unwritten interface definition:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{model} \hlkwb{=} \hlkwd{fit}\hlstd{(target} \hlopt{~} \hlstd{.,} \hlkwc{data} \hlstd{= train.data, ...)}
+\hlstd{predictions} \hlkwb{=} \hlkwd{predict}\hlstd{(model,} \hlkwc{newdata} \hlstd{= test.data, ...)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+  \end{blocki}
+% \end{vframe}
+
+% \begin{vframe}{Motivation}
+  \begin{blocki}{The bad news}
+    \item Some packages API is \enquote{just different}
+    \item Functionality is always package or model-dependent, even though the procedure might be general
+    \item No meta-information available or buried in docs 
+      % (sometimes not documented at all)
+    % \item Many packages require the user to \enquote{guess} good hyperparameters
+    % \item Result: engthy, tedious and error-prone code
+  \end{blocki}
+  \oneliner{Our goal: A domain-specific language for many machine learning concepts!}
+\end{vframe}
+
+
+\begin{vframe}{Motivation: \pkg{mlr}}
+  \begin{itemize}
+    \item Unified interface for the basic building blocks: tasks, learners, resampling, hyperparameters, \ldots
+    \item Reflections: nearly all objects are queryable (i.e.\ you can ask them for their properties and program on them)
+    \item The OO-structure allows many generic algorithms:
+      \begin{itemize}
+        \item Bagging
+        \item Stacking
+        \item Feature Selection
+        \item \ldots
+      \end{itemize}
+    \item Easily extensible via S3
+      \begin{itemize}
+        \item Extension is not covered here, but explained in detail in the online tutorial
+        \item You do not need to understand S3 to use \pkg{mlr}
+        \item Wondering why we don't use S4? We care about code bloat and speed.
+      \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+\begin{vframe}{}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{\#\# Error in plotLearnerPrediction(learner = "{}classif.ksvm"{}, task = iris.task): could not find function "{}plotLearnerPrediction"{}}}\end{kframe}
+\end{knitrout}
+
+\end{vframe}
+
+% \begin{vframe}{Some remarks on style}
+%   \begin{blocki*}
+%   \item Function names are camel-case: doThatThing()
+%   \item Arguments and variables are lower-case, with dots: doThatThing(my.arg, another.one)
+%   \item We use \enquote{\code{=}} not \enquote{\code{<-}}
+%   \item We document in a pretty formal fashion, including type info
+%   \item We try to use \enquote{@family} to group functions in the docs
+%   \item We try to arg- and user-error-check in the most safe and informative way
+%   \end{blocki*}
+% \end{vframe}
+
+% \section{Building Blocks}
+
+
+
+
+
+
+

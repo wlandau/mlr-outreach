@@ -1,0 +1,23 @@
+%% Footer:
+\usepackage{xfrac}
+\usepackage{framed, color}
+
+\setbeamertemplate{footline}[text line]{%
+    \noindent\hspace*{\dimexpr-\oddsidemargin-1in\relax}%
+     \colorbox{metropolis_theme_color}{
+     \makebox[\dimexpr\paperwidth-2\fboxsep\relax]{
+     \color{mygrey}
+     \begin{minipage}{0.33\linewidth}
+       \secname
+     \end{minipage}\hfill
+     \begin{minipage}{0.33\linewidth}
+       \centering
+       \insertshortauthor
+     \end{minipage}\hfill
+     \begin{minipage}{0.33\linewidth}
+       \flushright
+       \insertframenumber{}/\inserttotalframenumber
+     \end{minipage}     
+     }}%
+  \hspace*{-\paperwidth}
+}

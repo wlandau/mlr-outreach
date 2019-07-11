@@ -1,0 +1,53 @@
+\begin{frame}[fragile]{Create a learner}
+<<warning=FALSE, message= FALSE>>=
+# List available learners
+listLearners(obj = fuelsubset.task, properties = "functionals")[,1:3]
+# Create the learner
+lrn = makeLearner("regr.FDboost")
+@
+\end{frame}
+
+\begin{frame}[fragile]{Train on a regression task}
+<<warning=FALSE, message= FALSE>>=
+# Train the learner on a subset of our fuelsubset data
+model = train(learner = lrn, task = subsetTask(fuelsubset.task, subset = 1:80))
+# Predict on held out data
+p = predict(model, subsetTask(fuelsubset.task, subset = 81:129))
+# Compute the performance
+performance(p, list(rmse, rsq))
+@
+\end{frame}
+
+\begin{frame}[fragile]{Example: Functional KNN}
+\vspace{-1cm}
+\hspace{-3cm}
+\begin{figure}
+%\begin{center}
+\includegraphics[scale = 0.25]{figure/knn.png}
+%\end{center}
+\end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Classification}
+\textbf{Use learners that exploit the functional nature:}
+\vspace{-0.3}
+\begin{small}
+<<warning=FALSE, message=FALSE, cache=TRUE>>=
+listLearners(obj = gunpoint.task, properties = "single.functional")[,1:3]
+lrn = makeLearner("classif.fdausc.knn")
+resample(lrn, gunpoint.task, cv3)
+@
+\end{small}
+\end{frame}
+
+\begin{frame}[fragile]{Classification}
+\textbf{Or we can completely disregard the functional nature:}
+<<warning=FALSE, message=FALSE, cache=TRUE>>=
+listLearners(obj = gunpoint.task)[1:3, 1:2]
+lrn = makeLearner("classif.randomForest")
+resample(lrn, gunpoint.task, cv3)
+@
+\end{frame}
+
+
+

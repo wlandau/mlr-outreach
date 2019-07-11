@@ -1,0 +1,205 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CPO                               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{mlrCPO}
+  \begin{itemize}
+    \item \pkg{mlrCPO} - Composable Preprocessing Operators for mlr - \url{https://github.com/mlr-org/mlrCPO}
+<<>>=
+library(mlrCPO)
+@
+    
+    \item Preprocessing operations (e.g. imputation or PCA) as R objects with their own hyperparameters
+   
+<<>>=
+operation = cpoScale()
+print(operation)
+@ 
+
+\end{itemize}
+
+\framebreak
+
+\begin{itemize}
+    \item Objects are handled using the ``piping'' operator \texttt{\%>{}>\%}:
+
+        \item Composition:
+<<eval=FALSE>>=
+imputing.pca = cpoImputeMedian() %>>% cpoPca()
+@
+        \item Application to data
+<<eval=FALSE>>=
+task %>>% imputing.pca
+@
+        \item Combination with a \texttt{Learner} to form a machine learning pipeline
+<<eval=FALSE>>=
+pca.rf = imputing.pca %>>%
+  makeLearner("classif.randomForest")
+@
+
+  \end{itemize}
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{mlrCPO Example: Titanic}
+The feature engineering and preprocessing steps done on the Titanic dataset, using \texttt{mlrCPO}:
+
+<<include=FALSE>>=
+rm(list=ls(all=TRUE))
+load("data.rda")
+data$Name = as.factor(data$Name)
+data = impute(data, cols = list(
+  Fare = imputeMedian()
+))
+data = data$data
+
+n = nrow(data)
+train = sample(n, size = 2/3 * n)
+test = setdiff(1:n, train)
+
+train.data = data[rownames(data) %in% train, ]
+test.data = data[rownames(data) %in% test, ]
+@
+
+<<>>=
+# Add interesting columns
+newcol.cpo = cpoAddCols(
+  farePp = Fare / (Parch + Sibsp + 1),
+  deck = stri_sub(Cabin, 1, 1),
+  side = {
+  digit = stri_sub(Cabin, 3, 3)
+  digit = suppressWarnings(as.numeric(digit))
+  c("port", "starboard")[digit %% 2 + 1]
+  })
+@
+
+<<>>=
+# drop uninteresting columns
+dropcol.cpo = cpoSelect(names = c("Cabin",
+  "Ticket", "Name"), invert = TRUE)
+
+# impute
+impute.cpo = cpoImputeMedian(affect.type = "numeric") %>>%
+  cpoImputeConstant("__miss__", affect.type = "factor")
+@
+
+\framebreak
+
+<<warning=FALSE>>=
+train.task = makeClassifTask("Titanic", train.data,
+  target = "Survived")
+
+pp.task = train.task %>>% newcol.cpo %>>%
+  dropcol.cpo %>>% impute.cpo
+@
+
+\begin{itemize}
+\item Advantage: Different preprocessing steps can be tried by preparing different CPO objects ($\rightarrow$ ``strategy pattern'').
+\end{itemize}
+
+\end{vbframe}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{vframe}{Transformation of New Data}
+  \begin{itemize}
+    \item New data (e.g. for testing, prediction) must also be preprocessed, in same order and with same hyperparameters
+    \item Preprocessing parameters (e.g. PCA matrix) should only depend on training data
+    \item Use \texttt{retrafo()} to get retrafo information to use on test data
+    \item Object of type \texttt{CPOTRained}, behaves very similar to \texttt{CPO}
+  \end{itemize}
+<<>>=
+# get retransformation
+ret = retrafo(pp.task)
+# can be applied to data using the %>>% operator,
+# just as a normal CPO
+pp.test = test.data %>>% ret
+@
+\end{vframe}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{vframe}{Combination with Learners}
+  \begin{itemize}
+    \item Attach one or more \texttt{CPO} to a \texttt{Learner} to build machine learning pipelines
+    \item Autotmatically handles preprocessing of test data
+  \end{itemize}
+<<>>=
+learner = newcol.cpo %>>% dropcol.cpo %>>%
+  impute.cpo %>>% makeLearner("classif.randomForest", 
+  predict.type = "prob")
+
+# the new object is a "CPOLearner", subclass of "Learner"
+inherits(learner, "CPOLearner")
+
+# train using the task that was not preprocessed
+ppmod = train(learner, train.task)
+@
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Tuning with \pkg{mlrCPO}}
+\begin{itemize}
+    \item CPO hyperparameters can be tuned jointly, and jointly with Learner parameters
+    \item Tuning can be done using \texttt{tuneParams()} function from \pkg{mlr} or nested resampling,
+      without any problem
+  \end{itemize}
+  
+<<message=FALSE, warning=FALSE>>=
+
+lrn = cpoFilterFeatures(abs = 2L) %>>% 
+  makeLearner("classif.randomForest")
+
+
+ps = makeParamSet(
+  makeDiscreteParam("filterFeatures.method", 
+    values = c("anova.test", "chi.squared")),
+  makeIntegerParam("mtry", lower = 1, upper = 10)
+)
+ctrl = makeTuneControlRandom(maxit = 10L)
+tr = tuneParams(lrn, iris.task, cv3, par.set = ps, 
+  control = ctrl)
+@
+
+
+<<>>=
+@
+
+
+\end{vbframe}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{vframe}{mlrCPO III}
+  \begin{itemize}
+        \item ``cbind'' CPO combines different preprocessing outputs of the same data
+
+        \end{itemize}
+<<>>=
+scale = cpoSelect(pattern = "Fare", id = "first") %>>%
+  cpoScale(id = "scale")
+scale.pca = scale %>>% cpoPca()
+cbinder = cpoCbind(scale, scale.pca, cpoSelect(
+  pattern = "Age", id = "second"))
+result = train.data %>>% cbinder
+result[1:3, ]
+@
+      
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{vframe}{mlrCPO IV}
+\begin{itemize}
+\item \texttt{listCPO()} to show available \texttt{CPO}s
+\item Currently 69 CPOs, and growing: imputation, feature type conversion, target value transformation, over/undersampling, ...
+\item CPO ``multiplexer'' enables tuning over different distinct preprocessing operations
+\item Custom \texttt{CPO}s can be created using \texttt{makeCPO()}
+\item Further documentation in the vignettes
+\end{itemize}
+
+\end{vframe}
+
+

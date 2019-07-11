@@ -1,0 +1,27 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parallelization                   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Parallelization}
+  \begin{itemize}
+    \item We use our own package: \pkg{parallelMap}
+    \item Setup:
+
+<<parallelMap,eval=FALSE>>=
+parallelStart("multicore")
+benchmark(...)
+parallelStop()
+@
+
+    \item Backends: \texttt{local}, \texttt{multicore}, \texttt{socket}, \texttt{mpi} and \texttt{batchtools}
+    \item The latter means support for: makeshift SSH-clusters, Docker swarm and HPC schedulers like SLURM, Torque/PBS, SGE or LSF
+  \item Levels allow fine grained control over the parallelization
+    \begin{itemize}
+  \item \code{mlr.resample}: Job = \enquote{train / test step}
+  \item \code{mlr.tuneParams}: Job = \enquote{resample with these parameter settings}
+  \item \code{mlr.selectFeatures}: Job = \enquote{resample with this feature subset}
+    \item \code{mlr.benchmark}: Job = \enquote{evaluate this learner on this data set}
+    \end{itemize}
+    \end{itemize}
+\end{vframe}
+

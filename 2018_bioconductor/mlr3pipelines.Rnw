@@ -1,0 +1,81 @@
+\Sexpr{set_parent('talk.Rnw')}
+
+
+\begin{vframe}{\pkg{mlr} Pipelines}
+  \begin{blocki}{}
+    \item 
+      Many Machine Learning Workflows consist of multiple steps, such as preprocessing, computing features, or imputing missing data
+  
+    \item 
+      This is often a long winded and complicated process, and properly separating train and test data is very difficult \\ 
+      \includegraphics[page=1, width=\textwidth, trim=0 110 0 95]{figure/mlr3pipelines_figures}
+  
+    \item 
+      Pipelines allow us to specify many difficult steps that are often undertaken in a few, concise lines
+
+    \item
+      By integrating pipelines with mlr3 and mlr3 tuning we can jointly tune over all hyperparameters the pipeline exposes
+  \end{blocki} 
+\end{vframe}
+
+
+\begin{vframe}{\pkg{mlr} Pipelines}
+  \begin{blocki}{Pipelines provide:}
+    \item 
+      Multiple widely used operations (Scaling, PCA, Variable Selection, Imputation, Stacking and many others)
+  
+    \item 
+      A clean, extendible interface for custom pipeline operators
+  
+    \item 
+      A simple operator connection operator: \texttt{\%>>\%}
+
+    \item
+      An abstraction for parallelization
+  \end{blocki} 
+  \includegraphics[page=2, width=\textwidth, trim=0 60 0 60]{figure/mlr3pipelines_figures}
+\end{vframe}
+
+
+\begin{vframe}{\pkg{mlr} Pipelines}
+
+  \includegraphics[page=3, width=\textwidth, trim=0 70 0 70]{figure/mlr3pipelines_figures}
+
+  \begin{blocki}{}
+    \item 
+      \texttt{train()} saves transformation params and outputs transformed training data
+  
+    \item 
+      \texttt{predict()} uses params and outputs transformed test data
+  \end{blocki} 
+\end{vframe}
+
+
+\begin{vframe}{\pkg{mlr} Pipelines}
+
+  Mulitple \texttt{GraphNodes}'s can be connected with \texttt{\%>>\%} \\
+  \includegraphics[page=4, width=\textwidth]{figure/mlr3pipelines_figures}
+
+\end{vframe}
+
+
+\begin{vframe}{\pkg{mlr} Pipelines}
+
+  \includegraphics[page=5, width=\textwidth]{figure/mlr3pipelines_figures}
+
+\end{vframe}
+
+\begin{vframe}{\pkg{mlr} Pipelines}
+\begin{itemize}
+\item Such a graph is now an mlr3 learners and can be trained, prediced,
+  resampled and tuned as any other learner
+\item The graph can easily be trained by walking in a similar manner like
+  topological sorting, mainting and active front
+\item Individual trained parameters and objects can easily be accessed by
+  indexing by PipeOp names
+\end{itemize}
+
+Thanks! Questions? Comments? Comment on Github?
+
+\end{vframe}
+

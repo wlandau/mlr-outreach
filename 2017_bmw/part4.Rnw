@@ -1,0 +1,30 @@
+\begin{vframe}{There is more \ldots}
+  \begin{blocki*}
+  \item Clustering and Survival analysis
+  \item Regular cost-sensitive learning (class-specific costs)
+  \item Cost-sensitive learning (example-dependent costs)
+  \item ROC and learning curves
+  \item Imbalancy correction
+  \item Multi-Label learning
+  \item Bayesian optimization
+  \item Multi-criteria optimization
+  \item Ensembles, generic bagging and stacking
+  \item Some interactive plots with \texttt{ggvis}
+  \item \ldots
+  \end{blocki*}
+\end{vframe}
+\begin{vframe}{Outlook}
+  \begin{blocki}{We are working on}
+  \item Even better tuning system
+  \item More interactive and 3D plots
+  \item Large-Scale learning on databases
+  \item Keeping the data on hard disk \& distributed storage
+  \item Time-Series tasks
+  \item Large-Scale usage of OpenML
+  \item \texttt{auto-mlr}
+  \item \ldots
+  \end{blocki}
+\end{vframe}
+\begin{vframe}
+  \oneliner{Thanks!}
+\end{vframe}

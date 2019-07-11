@@ -1,0 +1,75 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Nested Resampling                 %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Nested resampling}
+  \begin{itemize}
+    \item Continuous tuning on the same data can lead to overfitting
+    \item Unbiased evaluation with split into train, optimization and test set 
+  \end{itemize}
+  
+  \begin{center}
+  \includegraphics[width = 0.8 \textwidth]{figure/nested_resample.png}
+  \end{center}
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Nested Resampling Example}
+  \begin{itemize}
+    \item \texttt{makeTuneWrapper}: Fuses a base learner with a 
+      search strategy to select its hyperparameters
+    \item Therefore we need an additional inner resampling loop
+    \item Tuning settings are like before (par.set and ctrl)
+  \end{itemize}
+  
+<<>>=
+
+inner = makeResampleDesc("Subsample", iters = 4)
+lrn = makeLearner("classif.ksvm", predict.type = "prob")
+lrn.autosvm = makeTuneWrapper(
+  lrn, resampling = inner, 
+  par.set = par.set, control = tune.ctrl,
+  measures = mlr::auc)
+@
+
+\framebreak
+
+  \begin{itemize}
+    \item We use \texttt{rdesc} for the outer loop
+  \end{itemize}
+
+<<>>=
+r = resample(lrn.autosvm, task, 
+  resampling = rdesc, extract = getTuneResult,
+  measures = mlr::auc)
+r
+@
+
+\framebreak
+
+<<>>=
+r$extract
+@
+
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{R Example: Tuning + Nested}
+  \begin{itemize}
+    \item Let's add our auto-tuned SVM to the benchmark
+  \end{itemize}
+  
+<<>>=
+bmr2 = benchmark(lrn.autosvm, task, rdesc)
+@
+
+\framebreak
+
+<<tuningBmrTitanic, eval=TRUE, fig.height=4>>=
+plotBMRBoxplots(mergeBenchmarkResults(list(bmr, bmr2)))
+@
+
+\end{vbframe}
+

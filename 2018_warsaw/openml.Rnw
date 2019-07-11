@@ -1,0 +1,155 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% OpenML                            %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{OpenML}
+  Main idea: Make ML experiments reproducible, computer-readable and allow collaboration with others.
+
+  \begin{center} 
+  \includegraphics[page=16,width=0.8\textwidth, height=0.7\textheight]{figure/oml-talk.pdf}
+  \end{center}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{OpenML R-Package}
+  \oneliner{\url{https://github.com/openml/r}}
+  
+  \begin{blocki}{Tutorial}
+    \item Caution: Work in progress
+  \end{blocki}
+  
+  \begin{blocki}{Current API in R}
+    \item Explore and Download data and tasks
+    \item Register learners and upload runs
+    \item Explore your own and other people's results
+  \end{blocki}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{OpenML Account}
+  \begin{itemize}
+    \item Install the \texttt{openML} package and either \texttt{farff} or \texttt{RWeka}
+  \end{itemize}
+
+<<>>=
+library("OpenML")
+@
+
+  \begin{itemize}
+    \item You need an openML API key to talk to the server
+    \item Create an account on \url{https://www.openml.org/register}
+  \end{itemize}
+  
+<<eval=FALSE>>=
+setOMLConfig(apikey = "c1994bdb7ecb3c6f3c8f3b35f4b47f1f")
+
+# Permanently save your API disk to your config file
+saveOMLConfig(apikey = "c1994...47f1f", overwrite=TRUE)
+@
+  
+  \begin{itemize}
+    \item Find your own API key in account settings \texttt{API Authentication}
+  \end{itemize}
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{OpenMl data and tasks}
+  \begin{itemize}
+    \item You can access all datasets or tasks 
+  \end{itemize}
+  
+<<warning=FALSE, message=FALSE>>=
+datasets = listOMLDataSets() 
+datasets[1:3, c(1,2,11)]
+
+tasks = listOMLTasks()
+tasks[1:3, 1:4]
+@
+  
+  \framebreak
+  
+  \begin{itemize}
+    \item Search for data on \url{https://www.openml.org/home}
+  \end{itemize}
+  
+  \begin{center}
+    \includegraphics[width = \textwidth]{figure/openml.png}
+  \end{center}
+  
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{openML Titanic dataset}
+  \begin{itemize}
+    \item We download the Titanic dataset from OpenML
+  \end{itemize}
+
+<<message=FALSE, warning=FALSE>>=
+listOMLDataSets(data.name = "titanic")[, 1:5]
+titanic = getOMLDataSet(data.id = 40945L)
+@
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{openML Titanic task}
+
+\begin{itemize}
+    \item We also can directly load the Titanic classification task
+  \end{itemize}
+
+<<message=FALSE, warning=FALSE>>=
+listOMLTasks(data.name = "titanic")[1:2, 1:4]
+titanic.task = getOMLTask(task.id = 146230)
+titanic.task
+@
+
+\end{vframe}
+
+\begin{vframe}{OpenML and \pkg{mlr}}
+  \begin{itemize}
+    \item We can use OpenML and \pkg{mlr} together
+    \item Use mlr for \texttt{learner} and use the \texttt{task} that we've got from OpenML
+  \end{itemize}
+  
+<<message=FALSE>>=
+lrn = makeLearner("classif.randomForest", mtry = 2)
+run.mlr = runTaskMlr(titanic.task, lrn)
+run.mlr$bmr$results
+# uploadOMLRun(run.mlr)
+@
+  
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \begin{vframe}{OpenML Upload}
+%   \begin{itemize}
+%     \item You can upload your own data sets to OpenML
+%     \item Three steps are neccessary
+%         \begin{enumerate}
+%     \item \texttt{makeOMLDataSetDescription}: create the description object of an OpenML data set
+%     \item \texttt{makeOMLDataSet}: convert the data set into an OpenML data set
+%     \item \texttt{uploadOMLDataSet}: upload the data set to the server
+%   \end{enumerate}
+%   \item We can upload our Titanic data set to OpenML
+%   \end{itemize}
+% <<>>=
+% titanic.desc = makeOMLDataSetDescription(name = "titanic", 
+%   description = "Titanic data set ...")
+
+% titanic.data = makeOMLDataSet(desc = titanic.desc, 
+%   data = data, target.features = "Survived")
+
+% # titanic.id = uploadOMLDataSet(titanic.data)
+% @
+  
+% \end{vframe}
+
+

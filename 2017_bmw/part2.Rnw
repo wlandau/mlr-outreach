@@ -1,0 +1,218 @@
+%% PART II
+% \section{Part2} %----------------------------------------------------------------------------------
+
+%\section{Benchmarking and Model Comparison} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Benchmarking and Model Comparison}
+  \begin{blocki}{Benchmarking}
+    \item Comparison of multiple models on multiple data sets
+    \item Aim: Find best learners for a data set or domain, learn about learner characteristics, \ldots
+  \end{blocki}
+
+<<echo = FALSE, results='hide'>>=
+set.seed(12345)
+@
+
+<<eval=TRUE>>=
+# these are predefined in mlr for toying around:
+tasks = list(iris.task, sonar.task)
+learners = list(
+  makeLearner("classif.rpart"),
+  makeLearner("classif.randomForest", ntree = 500),
+  makeLearner("classif.svm")
+)
+
+rdesc = makeResampleDesc("CV", iters = 3)
+br = benchmark(learners, tasks, rdesc)
+@
+
+Container object: Results, individual predictions, \dots
+
+\framebreak
+
+<<eval=TRUE, fig.height=4>>=
+plotBMRBoxplots(br)
+@
+
+% \framebreak
+% 
+% <<eval=TRUE, fig.height=4>>=
+% plotBMRRanksAsBarChart(br)
+% @
+% 
+% \framebreak
+% 
+% <<warning=FALSE, fig.height=4>>=
+% g = generateCritDifferencesData(br, p.value = 0.1, test = "nemenyi")
+% plotCritDifferences(g) 
+% @
+
+%\includegraphics[width=0.9\textwidth]{figure/bmr_boxplots.pdf}
+
+\end{vbframe}
+
+%\section{Hyperparameter Tuning and Model Selection} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Hyperparameter Tuning}
+  \begin{blocki}{Tuning}
+  \item Used to find \enquote{best} hyperparameters for a method in a data-dependent way
+  \item General procedure: Tuner proposes param point, eval by resampling, feedback value to tuner
+  \end{blocki}
+
+  \begin{blocki}{Grid search}
+  \item Basic method: Exhaustively try all combinations of finite grid\\
+  $\leadsto$ Inefficient, combinatorial explosion, searches irrelevant areas
+  \end{blocki}
+
+  \begin{blocki}{Random search}
+  \item Randomly draw parameters\\
+  $\leadsto$ Scales better then grid search, easily extensible
+  \end{blocki}
+\end{vframe}
+
+
+\begin{vframe}{Automatic Model Selection}
+  \begin{blocki}{Prior approaches:}
+  \item Looking for the silver bullet model \\
+    $\leadsto$ Failure\\
+  \item Exhaustive benchmarking / search \\
+    $\leadsto$ Per data set: too expensive \\
+    $\leadsto$ Over many: contradicting results
+  \item Meta-Learning:\\
+    $\leadsto$ Failure \\
+    $\leadsto$ Usually not for preprocessing / hyperparamters
+  \end{blocki}
+
+  \structure{Goal}: Data dependent + Automatic + Efficient
+\end{vframe}
+
+\begin{frame}{Adaptive tuning}
+  \begin{center}
+    \includegraphics[width=0.85\textwidth]{figure/ml_abstraction_optimization-crop.pdf}
+  \end{center}
+\end{frame}
+
+\begin{vframe}{Tuning Example}
+
+<<echo = TRUE>>=
+ps = makeParamSet(
+  makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x),
+  makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x)
+)
+ctrl = makeTuneControlRandom(maxit = 100L)
+rdesc = makeResampleDesc("CV", iters = 2L)
+res = tuneParams("classif.ksvm", task = pid.task, control = ctrl, 
+  resampling = rdesc, par.set = ps, show.info = FALSE)
+@
+
+<<cache = TRUE, echo = FALSE, fig.height=3.5>>=
+# create the C and sigma parameter in continuous space: 2^-5 : 2^5
+data = generateHyperParsEffectData(res)
+plt = plotHyperParsEffect(data, x = "C", y = "sigma", z = "mmce.test.mean",
+  plot.type = "heatmap", interpolate = "regr.earth", show.experiments = TRUE)
+min_plt = ceiling(min(plt$data$mmce.test.mean, na.rm = TRUE)*100)/100 
+max_plt = floor(max(plt$data$mmce.test.mean, na.rm = TRUE)*100)/100 
+mean_plt = mean(c(min_plt, max_plt))
+breaks =  round(seq(min_plt+0.01, max_plt-0.01, length = 4), 4)
+plt + theme_minimal() + 
+  scale_fill_gradient2(breaks = breaks,
+  low = "#00BA38", mid = "white", high = "#F8766D", midpoint = mean_plt)
+@
+
+
+\end{vframe}
+
+
+% \begin{vframe}{General Algorithm Configuration}
+% \begin{itemize}
+%   \item Assume a (parametrized) algorithm $a$
+%   \item Parameter space  $\theta \in \Theta$\\
+%         might be discrete and dependent / hierarchical
+%   \item Stochastic generating process for instances $i \sim P$, where we draw i.i.d. from.
+%         % (Usually predefined set of instances, and i.i.d.-ness somewhat violated)
+%   \item Run algorithm $a$ on $i$ and measure performance $f(i, \theta) = run(i, a(\theta))$
+%   \item Objective: $\min_{\theta \in \Theta} E_P[f(i, \theta)]$
+%   \item No derivative for $f(\cdot, \theta)$, black-box
+%   \item $f$ is stochastic / noisy
+%   \item $f$ is likely expensive to evaluate
+%   \item \textbf{Consequence: very hard problem}
+% \end{itemize}
+% $\leadsto$ \structure{\textbf{Racing or model-based / bayesian optimization}}
+% % \item VERY poopular nowadays to configure, e.g., discrete solvers for NP-hard problems
+% \end{vframe}
+% 
+% 
+% \begin{frame}{Idea of (F-)Racing}
+%   \begin{columns}
+%     \begin{column}{.35\textwidth}
+%       \begin{tikzpicture}[scale=0.18]
+%         \input{race-styles}
+%         \input{race}
+%       \end{tikzpicture}
+%     \end{column}
+%     \begin{column}{.65\textwidth}
+%           \begin{itemize}
+%           \item Write down all candidate solutions
+%           \item Iterate the following till budget exhausted
+%           \item One \enquote{generation}
+%           \begin{itemize}
+%             \item Evaluate all candidates on an instance, and another, \ldots
+%             \item After some time, compare candidates via statistical test,
+%             e.g., Friedman test with post-hoc analysis for pairs
+%             \item Remove outperformed candidates
+%           \end{itemize}
+%           \item Output: Remaining candidates
+%           \item Yes, the testing completely ignores \enquote{sequentiality} and is somewhat heuristic.
+%           %But we would only care about this if it would influence optimization efficiency...
+%           \end{itemize}
+%         \bigskip
+%       \end{column}
+%     \end{columns}
+% \end{frame}
+% 
+% \begin{vframe}{Idea of Iterated F-Racing}
+%   \begin{blocki}{What might be problematic?}
+%   \item We might have many or an infinite number of candidates
+%   \end{blocki}
+% 
+%   \begin{blocki}{Iterated racing}
+%   \item Have a stochastic model to draw candidates from in every generation
+%   \item For each parameter: Univariate, independent distribution (factorized joint distribution)
+%   \item Sample distributions centered at \enquote{elite} candidates from previous generation(s)
+%   \end{blocki}
+% 
+%   \begin{blocki}{Whats good about this}
+%   \item Very simple and generic algorithm
+%   \item Can easily be parallelized
+%   \end{blocki}
+% \end{vframe}
+% 
+% \begin{vbframe}{irace}
+% <<include=FALSE>>=
+% library(mlr)
+% library(mlbench)
+% configureMlr(show.info = FALSE)
+% @
+% 
+% <<warning=FALSE, fig.width=8>>=
+% bls = list(
+%   makeLearner("classif.ksvm"),
+%   makeLearner("classif.randomForest")
+% )
+% lrn = makeModelMultiplexer(bls)
+% ps = makeModelMultiplexerParamSet(lrn,
+%   makeNumericParam("sigma", lower = -10, upper = 10, trafo = function(x) 2^x),
+%   makeIntegerParam("ntree", lower = 1L, upper = 500L)
+% )
+% rdesc = makeResampleDesc("CV", iters = 2L)
+% 
+% ctrl = makeTuneControlIrace(maxExperiments = 120L)
+% res = tuneParams(lrn, iris.task, rdesc, par.set = ps, control = ctrl)
+% #Container object: Best params, performance, complete tuning trace
+% print(res)
+% plotOptPath(res$opt.path, iters = 119, pause = FALSE, x.over.time = list("selected.learner"))
+% @
+
+
+%\end{vbframe}
+

@@ -1,0 +1,124 @@
+\Sexpr{set_parent('talk.Rnw')}
+
+
+\begin{vframe}{Current state of \pkg{mlr}}
+  \begin{itemize}
+    \item Popular DSL for ML experiments
+    \item Connected to hundreds ML algorithms in R
+    \item Project home page:\\
+    \oneliner{\url{https://github.com/mlr-org/mlr}}
+      \begin{itemize}
+      	\item \href{https://github.com/mlr-org/mlr-tutorial/raw/gh-pages/cheatsheet/MlrCheatsheet.pdf}{\underline{Cheatsheet} for an quick overview.}
+      	\item \href{https://mlr-org.github.io/mlr/}{\underline{Tutorial} for mlr documentation with many code examples.}
+        \item \href{https://github.com/mlr-org/mlr/issues}{Ask questions in the \underline{GitHub issue tracker.}}
+      \end{itemize}
+  \vspace{1 mm}
+    \item 8-10 main developers, quite a few contributors, 4 GSOC projects in 2015/16 and one in 2017.
+    \item About 30K lines of code, 8K lines of unit tests.
+      \end{itemize}
+\end{vframe}
+
+\begin{frame}{Building Blocks}
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]{figure/ml_abstraction-crop.pdf}
+  \end{center}
+  \begin{itemize}
+    \item \pkg{mlr} objects: tasks, learners, measures, resampling instances.
+  \end{itemize}
+\end{frame}
+
+\begin{vframe}{Motivation: \pkg{mlr}}
+  \begin{itemize}
+    \item Clean and extensible via S3.
+    \item Reflections: nearly all objects are queryable (i.e.\ you can ask them for their properties and program on them).
+    \item The OO-structure allows many generic algorithms.
+  \end{itemize}
+Main features:
+\begin{itemize}
+  \item Support for classification, regression, survival and clustering
+  \item Multilabel classification
+  \item Resampling, Spatial and temporal resampling, Nested resampling
+  \item Tuning and feature selection
+  \item Wrapping / Pipelining
+  \item Handling of functional data
+  \item Visualization
+  \item \ldots
+\end{itemize}
+\end{vframe}
+
+\begin{vframe}{The \pkg{mlr} ecosystem}
+Next to \pkg{mlr} a larger number of surrounding packages exist
+
+\begin{itemize}
+\item \pkg{ParamHelpers} -
+  Description language for parameters in machine learning and optimization.
+\item \pkg{mlrMBO} -
+  Toolbox for Bayesian optimization. Useful for tuning hyperparameters in machine learning.
+\item \pkg{mlrCPO} -
+  Operator Based Machine Learning Pipeline Construction. Allows creation of preprocessing pipelines as DAGs.
+\item \pkg{mlr-extralearners} -
+  Contains additional (possibly unstable) learning algorithms that are not part of the \pkg{mlr} package itself.
+\item \pkg{parallelMap} -
+  Unified parallelization framework for multiple back-end. Used for parallelization in \pkg{mlr}.
+\item \pkg{batchtools} -
+  Large-scale R experiments on batch systems / clusters.
+\item \pkg{iml} -
+  Interpretable Machine Learning.
+\end{itemize}
+\end{vframe}
+
+\begin{vbframe}{\pkg{mlr} in action}
+Let's build a machine learning pipeline that does
+\begin{itemize}
+\item Impute missings (mean for nums, mode for factors)
+\item does different types of factor encodings
+\item Does different types of feature filtering
+\end{itemize}
+
+<<eval = FALSE>>=
+library(mlr)
+library(mlrCPO)
+library(mlrMBO)
+library(parallelMap)
+
+lrn = makeLearner("classif.xgboost")
+
+cl = list(numeric = imputeMean(), factor = imputeMode())
+pipeline = cpoImputeAll(classes = cl)
+pipeline = pipeline %>>% cpoMultiplex(id = "factenc",
+  cpos = list(cpoDummyEncode(), cpoImpactEncodeClassif()))
+pipeline = pipeline %>>% cpoFilterFeatures()
+pipeline = pipeline %>>% lrn
+@
+
+\framebreak
+
+<<eval = FALSE>>=
+ps = makeParamSet(
+  makeDiscreteParam("factenc.selected.cpo",
+    values = c("dummyencode", "impact.encode.classif")),
+  makeDiscreteParam("filterFeatures.method",
+    values = c("anova.test", "auc")),
+  makeNumericParam("filterFeatures.perc", 
+    lower = 0.1, upper = 1),
+  makeNumericParam("alpha", lower = -10, upper = 10,
+    trafo = function(x) 2^x),
+  makeIntegerParam("nrounds", lower = 1, upper = 100)
+)
+
+# we want Bayesian optimization for efficient configuration
+ctrl = makeTuneControlMBO(budget = 2) 
+@
+
+<<eval = FALSE>>=
+
+# attach autotuning to pipeline-xgboost
+autoxgb = makeTuneWrapper(pipeline, cv3, par.set = ps, 
+  control = ctrl)
+
+# Nested crossvalidation in parallel
+parallelStartSocket()
+r = resample(autoxgb, task, cv3)
+parallelStop()
+@
+\end{vbframe}

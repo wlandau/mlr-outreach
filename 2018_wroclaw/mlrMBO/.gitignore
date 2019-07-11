@@ -1,0 +1,10 @@
+cache
+figure/beamer-*
+*-concordance.tex
+*.bcf
+main.pdf
+*.run.xml
+main.tex
+*.grd
+*.gri
+*.vrt

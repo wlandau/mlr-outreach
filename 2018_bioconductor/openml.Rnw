@@ -1,0 +1,63 @@
+\Sexpr{set_parent('talk.Rnw')}
+
+\begin{vframe}{OpenML Project}
+\href{https://www.openml.org}{\underline{OpenML.org}} is an online platform for sharing and organizing data, ML tasks, algorithms and experiments.
+
+OpenML is based on 4 \textbf{basic elements}, i.e., Data, Task, Flow, and Run:
+
+\begin{center}
+\begin{figure}
+% Editable source: https://docs.google.com/presentation/d/1Gbae9fzuTjnfxCuTKIodM0assSDwLOxy7tzIv6y6cxc/edit?usp=sharing
+\includegraphics[page=1, width=\textwidth]{figure/oml_overview.pdf}
+\end{figure}
+\end{center}
+
+We have a REST API and client interfaces for \pkg{R} (with \pkg{mlr}), \pkg{Python} (with \pkg{sklearn}), \pkg{Java} (with \pkg{Weka} or \pkg{MOA}), and \pkg{.NET} (based on \pkg{C\#})...
+\vspace{-17.5pt}
+\oneliner{Tutorials: \url{https://docs.openml.org/APIs}}
+\end{vframe}
+
+\begin{vframe}{OpenML Project}
+\href{https://www.openml.org}{\underline{OpenML.org}} is an online platform for sharing and organizing data, ML tasks, algorithms and experiments.
+
+OpenML is based on 4 \textbf{basic elements}, i.e., Data, Task, Flow, and Run:
+
+\begin{center}
+\begin{figure}
+% Editable source: https://docs.google.com/presentation/d/1Gbae9fzuTjnfxCuTKIodM0assSDwLOxy7tzIv6y6cxc/edit?usp=sharing
+\includegraphics[page=2, width=\textwidth]{figure/oml_overview.pdf}
+\end{figure}
+\end{center}
+
+We have a REST API and client interfaces for \pkg{R} (with \pkg{mlr}), \pkg{Python} (with \pkg{sklearn}), \pkg{Java} (with \pkg{Weka} or \pkg{MOA}), and \pkg{.NET} (based on \pkg{C\#})...
+\vspace{-17.5pt}
+\oneliner{Tutorials: \url{https://docs.openml.org/APIs}}
+\end{vframe}
+
+\begin{vframe}{OpenML \pkg{R} Package}
+The \pkg{OpenML} package is nicely connected to \pkg{mlr} and contains functions to communicate with the OpenML-Server directly from your R session:
+
+\begin{itemize}
+\item \texttt{listOML*} functions: Explore and query existing \textbf{basic elements}.
+\item \texttt{getOML*} functions: Download available \textbf{basic elements}.
+\item \texttt{uploadOML*} functions: Upload your own \textbf{basic elements}.
+\item ... \href{https://github.com/openml/openml-r/blob/master/vignettes/openml-cheatsheet.pdf}{see \underline{Cheatsheet} for an quick overview.}
+\end{itemize}
+
+Example: Get available UCI tasks, run CART on them and upload results.
+
+<<eval = FALSE, size = "footnotesize">>=
+library(OpenML)
+setOMLConfig(apikey = "MY_API_KEY")          # is required for uploading
+lrn = makeLearner("classif.rpart")           # create a mlr CART learner
+tasks = listOMLTasks(data.tag = "uci",        # list all UCI tasks with:
+  evaluation.measures = "predictive_accuracy",    # accuracy as measure,
+  estimation.procedure = "10-fold Crossvalidation")    # and 10-fold CV!
+for (tid in tasks$task.id) {                     # iterate over task ids
+  task = getOMLTask(tid)                           # download task by id
+  run = runTaskMlr(task, learner = lrn)             # train CART on task
+  upload = uploadOMLRun(run, tags = "MY_TAG")         # upload + tag run
+}
+res = listOMLRunEvaluations(tag = "MY_TAG")        # list results by tag
+@
+\end{vframe}

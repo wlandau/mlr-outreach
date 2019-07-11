@@ -1,0 +1,22 @@
+
+
+
+3 "thirds" A, B, C
+
+A = mlr intro, API + resampling
+
+B = tuning + benchmarking
+
+C = goodies
+5 goodies, 1 folie idee + 1 folie code
+
+- partial dep
+- wrappers
+- parallel
+- openml
+
+- lightning goodies
+
+D outlook: what we did not cover  
+
+

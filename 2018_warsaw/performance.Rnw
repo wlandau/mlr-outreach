@@ -1,0 +1,68 @@
+
+% - Performance
+% - Nested Resampling
+% - Visualization
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Performance                       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Performance measures}
+  \begin{itemize}
+    \item \pkg{mlr} has 71 performance measures implemented
+    \item See all via \url{https://mlr-org.github.io/mlr/articles/tutorial/devel/measures.html} 
+    \item Or ask via \texttt{listMeasures()}
+  \end{itemize}
+  
+  \begin{center}
+    \includegraphics[width = 0.7 \textwidth]{figure/performance_mea.png}
+  \end{center}
+  
+  
+  \framebreak 
+
+  \begin{itemize}
+    \item Titanic is binary classification
+    \item 2x2 confusion matrix: true labels $y$ vs.predictions $\hat{y}$:
+    \begin{center}
+      \includegraphics[width = 0.8 \textwidth]{figure/confusion_matrix.png}
+    \end{center}
+  \end{itemize}
+
+    \framebreak
+    
+    \begin{itemize}
+      \item Most classifiers are scoring systems
+      \item Every threshold on that score induces a binary system
+      \item Measure TPR and FPR for all, then put them in a ROC plot 
+    \begin{center}
+      \includegraphics[width = \textwidth]{figure/roc.png}
+    \end{center}
+    
+    \item AUC is the area under such a ROC curve (between 0.5 and 1)
+    
+  \end{itemize}
+  
+\end{vbframe}
+
+
+\begin{vbframe}{R Example: Random Forest}
+  \begin{itemize}
+    \item The Random Forest seems to work best, lets have a closer look 
+  \end{itemize}
+  
+<<>>=
+res = holdout(lrn, task)
+df = generateThreshVsPerfData(res$pred, 
+  list(fpr, tpr, acc))
+plotROCCurves(df)
+@
+
+\framebreak
+
+<<>>=
+print(calculateROCMeasures(pred), abbreviations = FALSE)
+@
+
+\end{vbframe}

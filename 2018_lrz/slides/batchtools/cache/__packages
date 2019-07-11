@@ -1,0 +1,11 @@
+base
+methods
+prettycode
+datasets
+utils
+grDevices
+graphics
+stats
+knitr
+microbenchmark
+snow

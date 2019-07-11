@@ -1,0 +1,23 @@
+
+2-3 folien zu mlr2
+2-3 folien zu mbo
+Janek, GC 
+1 griles bsp was mlr kann als code
+das autoxgboost bsp?
+
+3 folien zu unseren erfahrungen
+bernd???
+
+3 folien zu neuen design prinzipien
+4 folien zu mlr3, dem pakezt
+michel
+
+3 folien zu den pipelines
+1 folie zu tuning
+flo
+
+
+1 ökosystem slide?
+flo daniel
+
+

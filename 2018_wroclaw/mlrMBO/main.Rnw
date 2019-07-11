@@ -1,0 +1,1137 @@
+%!TEX program = xelatex
+\documentclass[10pt]{beamer}
+
+%\usepackage{handoutWithNotes}
+%\pgfpagesuselayout{4 on 1 with notes}[a4paper,border shrink=5mm]
+
+%own packages
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{xspace}
+\usepackage{textcomp}
+\mathtoolsset{showonlyrefs}
+\usepackage{grffile}
+\usepackage[english]{babel}
+\usepackage{xcolor}
+\usepackage[normalem]{ulem} %strike through with sout
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc,backgrounds,chains,arrows}
+\usepackage{graphicx}
+\usepackage{transparent} %includegraphics with alpha
+\usepackage{fontawesome} %fontawesome icons
+\usepackage[utf8]{inputenc}
+\usepackage{csquotes}
+\usepackage{bm}
+
+%beamer template
+%\usepackage{handoutWithNotes}
+%\pgfpagesuselayout{4 on 1 with notes}[a4paper,border shrink=5mm]
+
+%onw latex commands
+\input{cmds.tex}
+
+%bib handling
+\usepackage[backend=biber,style=authoryear,bibencoding=utf8, maxcitenames=2]{biblatex}
+\addbibresource[datatype=bibtex]{bib.bib}
+
+\DeclareCiteCommand{\xfootcite}[\mkbibfootnote]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \setunit{\addnbspace}
+   \tiny
+   \printnames{labelname}%
+   \setunit{\labelnamepunct}
+  \printfield[citetitle]{title}%
+   \newunit
+   \printfield{year}
+}{\addsemicolon\space}{\usebibmacro{postnote}}
+
+\DefineBibliographyStrings{ngerman}{ 
+   andothers = {{et\,al\adddot}},             
+} 
+
+
+%theme adjustements
+\usetheme[block = fill, numbering = fraction, progressbar = frametitle]{metropolis}
+\definecolor{TuGreen}{RGB}{132,184,24}
+\definecolor{TuGreen40}{RGB}{211,227,175}
+\setbeamercolor{title separator}{fg = TuGreen}
+\setbeamercolor{progress bar}{fg = TuGreen, bg = TuGreen40}
+%\usefonttheme[onlymath]{serif}
+
+% https://tex.stackexchange.com/questions/160825/modifying-margins-for-one-slide
+\newcommand\Wider[2][3em]{%
+\makebox[\linewidth][c]{%
+  \begin{minipage}{\dimexpr\textwidth+#1\relax}
+  \raggedright#2
+  \end{minipage}%
+  }%
+}
+
+%set title
+\title[mlrMBO]{mlrMBO}
+\subtitle{Toolbox for Bayesian Optimization and Model-Based Optimization in R}
+\date{\today}
+\author[Jakob Richter]{Jakob Richter~\inst{1} \and Bernd Bischl~\inst{2} \and Jakob Bossek~\inst{3} \and Michel Lang~\inst{1}}
+\institute{\inst{1} TU Dortmund, Germany \and
+           \inst{2} LMU Munich, Germany \and
+           \inst{3} WWU Münster, Germany}
+
+\begin{document}
+
+<<setup, include=FALSE>>=
+library(knitr)
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+library(stringi)
+library(mlrMBO)
+library(data.table)
+options(formatR.arrow=TRUE, width=60)
+opts_chunk$set(
+  fig.path='figure/beamer-',
+  fig.align='center',
+  fig.lp='fig:',
+  fig.width = 8,
+  include = TRUE,
+  echo = FALSE,
+  warnings = FALSE,
+  size='scriptsize',
+  message=FALSE,
+  cache=TRUE,
+  cache.path='cache/'
+  )
+
+ggbeam = theme_bw() + theme(
+    panel.background = element_rect(fill = "transparent",colour = NA), # or theme_blank()
+    panel.grid.minor = element_blank(), 
+    panel.grid.major = element_blank(),
+    plot.background = element_rect(fill = "transparent",colour = NA),
+    legend.background = element_rect(fill = "transparent",colour = NA)
+)
+
+configureMlr(show.learner.output = FALSE)
+@
+
+\maketitle
+
+\begin{frame}{Introduction}
+\begin{center}
+  \LARGE
+  \textcolor{lightgray}{Model-Based} \alert{Optimization}
+\end{center}
+\uncover<+->{
+Optimization Problem:
+\begin{align}
+    y &= f(\xv) \ , \quad f: \mathbb{X} \rightarrow \mathbb{R} \\
+    \xv^* &= \argmax\limits_{\xv \in \mathbb{X}} f(\xv)
+\end{align}  
+}
+\uncover<+->{
+But:
+\begin{itemize}
+  \item $f'(\xv)$ unknown
+  \item often: $\mathbb{X} \nsubseteq \mathbb{R}^d$ but $[-10, 10]^3 \times \{A, B, C\} \times \ldots$
+  \item also: $y = f(\xv) + \varepsilon(\xv)$
+  \item $f(\xv^*)$ unknown
+\end{itemize}  
+}
+\uncover<+->{
+Main challenge:
+\begin{itemize}
+  \item[{\faHourglass[2]}] Evaluation of $f(\xv)$ can take $>30$ minutes.
+\end{itemize}  
+}
+\uncover<+->{
+Therefore: \sout{Gradient-, (Quasi-)Newton-, Evolutionary Methods}
+}
+\end{frame}
+
+\begin{frame}{Introduction}
+\begin{center}
+  \LARGE
+  \alert{Model-Based} \textcolor{lightgray}{Optimization}
+\end{center}
+No additional information for $f$. \\
+Only possibility: Selective evaluation of $f(\xv)$ and acquiring knowledge of evaluated points $(\xv, y)$.
+
+\begin{itemize}[<+->]
+  \item[\faBinoculars] Wanted: Strategy to select $\xv$ so that we get to the optimum quickly.
+  \item[\faLightbulbO] Idea: Evaluate $f(\xv)$ for some $\xv$ and then fit a regression model $\hat{f}(\xv)$.
+  \item[\faHandORight] Hope: Maximum of $\hat{f}(\xv)$ is close to maximum of $f(\xv)$.
+  \item[\faQuestionCircleO] Why the detour? We can usually calculate the maximum of $\hat{f}(\xv)$ in a few seconds.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{Motivation: Hyperparameter Tuning}
+
+  \begin{block}{MBO in Machine Learning}
+    \begin{align}
+      f(\xv) &= y \\
+      \xv &: \text{hyperparameter setting} \\
+      y &: \text{Prediction performance (evaluated by resampling)}
+    \end{align}
+  \end{block}
+ 
+  \begin{itemize}
+    \item Still common practice: grid search\\
+    For a SVM it might look like:
+    \begin{itemize}
+      \item $C \in (2^{-12}, 2^{-10}, 2^{-8}, \ldots, 2^{8}, 2^{10}, 2^{12})$
+      \item $\gamma \in (2^{-12}, 2^{-10}, 2^{-8}, \ldots, 2^{8}, 2^{10}, 2^{12})$
+      \item Evaluate all $13^2 = 169$ combinations $C \times \gamma$
+    \end{itemize}
+    \item Bad because:
+    \begin{itemize}
+      \item optimum might be "off the grid"
+      \item lots of evaluations in bad areas
+      \item lots of costly evaluations
+    \end{itemize}
+    \item How bad? \nextpage
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Motivation: Hyperparameter Tuning}
+<<plot_hyperparameter_tuning_grid, warning=FALSE, eval=TRUE, message=FALSE, echo=FALSE, results='hide', fig.height=3, fig.width=4, out.width='0.5\\linewidth'>>=
+library(mlr); library(mlrMBO); set.seed(123); library(gridExtra)
+# Define classification learner and its Hyper Parameter search space
+lrn = makeLearner("classif.svm")
+ps = makeParamSet(
+  makeNumericParam("cost", -12, 12, trafo = function(x) 2^x),
+  makeNumericParam("gamma", -12, 12, trafo = function(x) 2^x))
+grid.ctrl = makeTuneControlGrid(resolution = 5)
+res.grid = tuneParams(lrn, sonar.task, cv10, par.set = ps, control = grid.ctrl, show.info = FALSE)
+op.df.gs = as.data.frame(res.grid$opt.path)
+g2 = ggplot(op.df.gs, aes(x = cost, y = gamma, fill = mmce.test.mean))
+add.stuff = function(g) {g + geom_tile() + scale_x_continuous(name = "SVM, RBF, gamma") + scale_y_continuous(name = "SVM, RBF, cost") + ggbeam + scale_fill_gradient2(name = "mmce", low = "yellow", high = "red", mid = "orange", limits = range(op.df.gs$mmce.test.mean), midpoint = mean(range(op.df.gs$mmce.test.mean)))}
+g2 = add.stuff(g2)
+g2 = g2 + geom_point()
+print(g2)
+@
+  \begin{itemize}
+    \item Because of budget restrictions grid might even be smaller!
+    \item Unpromising area quite big!
+    \item Lots of costly evaluations!
+  \end{itemize}
+  With \mlrMBO it's not hard to do it better! \nextpage
+\end{frame}
+
+<<code_hyperparameter_tuning_mbo, warning=FALSE, eval=TRUE, message=FALSE, include = FALSE>>=
+# Define classification learner and its Hyper Parameter search spce
+set.seed(2)
+lrn = makeLearner("classif.svm")
+ps = makeParamSet(
+  makeNumericParam("cost", -15, 15, trafo = function(x) 2^x),
+  makeNumericParam("gamma", -15, 15, trafo = function(x) 2^x))
+# Define Tuning Problem
+mbo.ctrl = makeMBOControl()
+mbo.ctrl = setMBOControlTermination(mbo.ctrl, iters = 12)
+mbo.ctrl = setMBOControlInfill(mbo.ctrl, crit = crit.ei)
+ctrl = mlr:::makeTuneControlMBO(mbo.control = mbo.ctrl, same.resampling.instance = FALSE)
+res.mbo = tuneParams(lrn, sonar.task, cv10, par.set = ps, 
+  control = ctrl, show.info = FALSE)
+@
+
+\begin{frame}[fragile]{Motivation: Grid Search vs. MBO}
+
+<<plot_grid_search_vs_mbo, results='hide', echo=FALSE, warning=FALSE, fig.height=4>>=
+set.seed(1)
+configureMlr(on.par.without.desc = 'quiet')
+op.df.mbo = as.data.frame(res.mbo$opt.path)
+grid = generateGridDesign(ps, 50)
+surrogate.lrn = makeLearner("regr.km", predict.type = "se", nugget.estim = TRUE, multistart = 5)
+m = train(surrogate.lrn, task = makeRegrTask(data = op.df.mbo[,c("cost","gamma","mmce.test.mean")], target = "mmce.test.mean"))
+grid.mbo = grid
+grid.mbo$mmce.test.mean = getPredictionResponse(predict(m, newdata = grid))
+lrn.fnn = makeLearner("regr.fnn", k = 1)
+m = train(lrn.fnn, task = makeRegrTask(data = op.df.gs[,c("cost","gamma","mmce.test.mean")], target = "mmce.test.mean"))
+grid.gs = grid
+grid.gs$mmce.test.mean = getPredictionResponse(predict(m, newdata = grid))
+data.points = rbind(cbind(op.df.mbo, method = "MBO"), cbind(op.df.gs, method = "grid search"))
+data.grid = rbind(cbind(grid.mbo, method = "MBO"), cbind(grid.gs, method = "grid search"))
+data.grid$method = factor(data.grid$method, levels = rev(levels(data.grid$method)))
+data.points$method = factor(data.points$method, levels = rev(levels(data.points$method)))
+g3 = ggplot(mapping = aes(x=cost, y=gamma, fill=mmce.test.mean))
+g3 = g3 + geom_tile(data = data.grid) + geom_point(data = data.points)
+g3 = g3 + scale_x_continuous(name = "SVM, RBF, gamma") + scale_y_continuous(name = "SVM, RBF, cost") + ggbeam
+g3 = g3 + scale_fill_gradient2(name = "mmce", low = "yellow", high = "red", mid = "orange", limits = range(data.grid$mmce.test.mean), midpoint = mean(range(data.grid$mmce.test.mean)))
+g3 = g3 + facet_grid(~method)
+g3
+@
+
+\end{frame}
+
+\begin{frame}[fragile]{Motivation: Hyperparameter Tuning}
+Compare results:\\
+  \begin{minipage}[t]{0.48\linewidth}
+  \vspace{0em}
+<<grid_tuning_res, size='tiny'>>=
+# Grid Tuning Result:
+res.grid
+# Tuning Costs (Time):
+sum(getOptPathExecTimes(res.grid$opt.path))
+@
+  \end{minipage} %
+  %
+  \begin{minipage}[t]{0.48\linewidth}
+  \vspace{0em}
+<<mbo_tuning_res, size='tiny'>>=
+# MBO Tuning Result:
+res.mbo
+# Tuning Costs (Time):
+sum(getOptPathExecTimes(res.mbo$opt.path))
+@
+  \end{minipage}
+<<grid_svm_compare_fig, echo = FALSE, fig.height=2.6, warning=FALSE>>=
+dat.compare = data.frame(method = c("MBO", "grid search"), misclassification = c(res.mbo$y, res.grid$y), time = c(sum(getOptPathExecTimes(res.mbo$opt.path)), sum(getOptPathExecTimes(res.grid$opt.path))))
+g = ggplot(melt(dat.compare))
+g = g + geom_bar(stat = "identity", mapping = aes(x = method, y = value, fill = method))
+g = g + facet_wrap(~variable, scales = "free") + ggbeam + scale_x_discrete(breaks = NULL) + ylab("") + xlab("")
+g
+@
+\end{frame}
+\begin{frame}{MBO: Illustrative Example}
+
+\uncover<2->{\large Problem: Alien is looking for the highest point on earth.}
+
+%\begin{columns}
+  \begin{minipage}{0.48\textwidth}
+    \begin{tikzpicture}
+      \visible<2->{
+        \node[] (ufo) {\includegraphics[width=3cm]{figure/ufo.png}};
+      }
+      \visible<3->{
+        \node[below of = ufo, xshift = -1cm, yshift = -2.5cm] (earth) {\includegraphics[width=4.5cm]{figure/flat_earth.png}};
+      }
+      \visible<1->{
+        \draw[-stealth, thick] (earth.south west) -- (earth.north west) node[midway, above, rotate=90, line width=10pt] {$x_1$};
+        \draw[-stealth, thick] (earth.south west) -- (earth.south east) node[midway, below] {$x_2$};
+      }
+      \visible<3->{
+        \draw[draw=green, line width = 1.5pt] ([shift=({-0.2cm,-1cm})]ufo.center) -- ([shift=({0.3cm,0.2cm})]earth.center);
+      }
+    \end{tikzpicture}
+  \end{minipage}
+  \begin{minipage}{0.48\textwidth}
+    \begin{itemize}
+      \item<3-> Height can only be determined by complex \faHourglass[2] laser measurement.
+      \item<3-> Laser can be set to $(x_1, x_2)$ coordinate and returns the height ($y$) after some time.
+      \item<3-> That's all our alien sees.
+    \end{itemize}
+  \end{minipage}
+%\end{columns}
+    
+\end{frame}
+
+\begin{frame}{Illustrative Example}
+For simplification: Our alien got a hot tip to look at $x_1 = 86.92$ and $x_2 \in[27,30]$.
+
+\begin{itemize}
+  \item No way to get information about the earth's surface except using the laser.
+  \item Solution: Start with 4 ``random" points. \\ (usually LHS Sample)
+\end{itemize}
+
+
+\end{frame}
+
+\begin{frame}{Illustrative Example}
+
+<<geo2smoof1, include = FALSE, fig.width = 3.5, fig.height = 4.5>>=
+library(geo2smoof)
+library(mlrMBO)
+library(ggplot2)
+alt_npl = raster::getData('alt', country='NPL', mask = FALSE)
+sf = convertRasterLayerToSmoof(raster.layer = alt_npl, interpolate = FALSE, maximize = TRUE)
+# plot2DNumeric(sf, render.levels = TRUE, render.contours = FALSE, n.samples = 20)
+sf1d = makeSingleObjectiveFunction(
+  name = "mtev", 
+  fn = function(x) {
+    x = matrix(c(rep(86.92, times = length(x)), x), ncol = 2)
+    sf(x)
+  }, 
+  par.set = makeNumericParamSet(id = "coords2", lower = 27, upper = 30),
+  vectorized = TRUE, 
+  has.simple.signature = TRUE, 
+  minimize = FALSE)
+# plot1DNumeric(sf1d, n.samples = 200)
+ctrl = makeMBOControl()
+ctrl = setMBOControlInfill(control = ctrl, crit = makeMBOInfillCritMeanResponse())
+ctrl = setMBOControlTermination(ctrl, iters = 10)
+set.seed(1)
+des = generateDesign(n = 4L, par.set = getParamSet(sf1d))
+des$y = sf1d(as.matrix(des))
+lrn1 = makeLearner("regr.km", predict.type = "se", covtype = "matern3_2", optim.method = "gen")
+lrn2 = makeLearner("regr.GPfit", predict.type = "se", type = "exponential", power = 1.5, config = list(on.par.without.desc = "quiet"))
+
+smbo = initSMBO(par.set = getParamSet(sf1d), design = des, control = ctrl, minimize = FALSE, learner = lrn2)
+plot(smbo) + ggbeam
+
+# jetzt SE als infill
+ctrl = setMBOControlInfill(control = ctrl, crit = crit.se)
+smbo = initSMBO(par.set = getParamSet(sf1d), design = mlrMBO:::getOptStateDesigns(smbo)[[1]], control = ctrl, minimize = FALSE, learner = lrn2)
+plot(smbo) + ggbeam + ggplot2::facet_grid(variable~., scales = "free_y")
+p = proposePoints(smbo)
+p$prop.points$coords2
+y = sf1d(p$prop.points$coords2)
+updateSMBO(smbo, x = p$prop.points, y = y)
+plot(smbo) + ggbeam + ggplot2::facet_grid(variable~., scales = "free_y")
+
+# jetzt EI als infill
+ctrl = setMBOControlInfill(control = ctrl, crit = crit.cb2)
+smbo = initSMBO(par.set = getParamSet(sf1d), design = mlrMBO:::getOptStateDesigns(smbo)[[1]], control = ctrl, minimize = FALSE, learner = lrn2)
+plot(smbo) + ggbeam + ggplot2::facet_grid(variable~., scales = "free_y") + ggtitle("initial design")
+
+for (i in 1:3) {
+  p = proposePoints(smbo)
+  p$prop.points$coords2
+  y = sf1d(p$prop.points$coords2)
+  updateSMBO(smbo, x = p$prop.points, y = y)
+  a = plot(smbo) + ggbeam + ggplot2::facet_grid(variable~., scales = "free_y") + ggtitle(sprintf("Iteration %i", i))
+  print(a)
+}
+@
+
+%\begin{columns}
+  \begin{minipage}{0.49\textwidth}
+    %\vspace{-2cm}
+    \begin{figure}[H]
+      \begin{overprint}
+      \foreach \x in {1,2,3,4,5,6,7}{%
+        \only<\x>{%
+          \includegraphics[width=\linewidth]{figure/beamer-geo2smoof1-\x.pdf}
+        }
+      }
+      \end{overprint}
+    \end{figure}
+  \end{minipage}
+  \begin{minipage}{0.49\textwidth}
+    \begin{itemize}
+      \item Use regression methods (e.g.\ Kriging) to get prediction for unknown $x_2$.
+      \item<+-> Prediction of $\hat{\mu}(x)$ does not help, as optimum apparently already known.
+      \item<+-> We need to explore: Use estimate $\hat{s}(x)$ to find uncertain regions.
+      \item<+-> ``Bad" areas with high uncertainty uninteresting.
+      \item<+-> Combine mean prediction and uncertainty using \alert{Infill Criterion}: $CB(\xv) = \hat{\mu}(\xv) + \lambda \cdot \sh(\xv)$.
+    \end{itemize}
+  \end{minipage}
+%\end{columns}
+    
+\end{frame}
+
+% section model_based_optimization (end)
+
+\section{mlrMBO: Introduction} % (fold)
+\label{sec:mlrmbo_introduction}
+
+\begin{frame}{\faCubes \ The Package: \texttt{mlrMBO}}
+
+\begin{block}{Insights}
+  \begin{itemize}
+    \item[\faCalendarO] 5+ years old
+    \item[\faUsers] 11 contributers
+    \item[\faFileCodeO] $6000+$ lines of tested code
+    \item[\faCloudDownload] $\sim 1000$ monthly r-studio \texttt{CRAN} downloads
+    \item[\faFileTextO] Base for multiple papers
+  \end{itemize}
+\end{block}
+
+\begin{itemize}
+  \item[\faBook] Documentation: \url{https://mlr-org.github.io/mlrMBO/}
+  \item[\faGithub] Bug + Issue Tacker: \url{https://github.com/mlr-org/mlrMBO/issues}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{\faPlayCircle \ Get Started}
+
+Using predefined benchmark function from \texttt{smoof} Package to start with all defaults:
+
+<<get_started, echo = TRUE, warning = FALSE>>=
+library(mlrMBO)
+ctrl = makeMBOControl()
+fun = makeBraninFunction()
+res = mbo(fun, control = ctrl)
+res$x
+res$y
+@
+    
+\end{frame}
+
+\begin{frame}[fragile]{\faStopCircle \ Termination}
+
+Control budget of an MBO-Run
+\begin{itemize}
+  \item Iterations after initial design
+  \item Maximum evaluations of objective function including initial design
+  \item Maximum total time budget
+  \item Maximum net execution runtime of objective function
+  \item Threshold for target function value
+\end{itemize}
+<<get_started_termination, echo = TRUE>>=
+ctrl = makeMBOControl()
+
+ctrl = setMBOControlTermination(ctrl, 
+  iters = 20, max.evals = 10, time.budget = 4, 
+  exec.time.budget = 2, target.fun.value = 0.01)
+res = mbo(fun, control = ctrl)
+
+res$final.state
+@
+
+First met condition determines termination.\\
+Custom termination criteria can be implemented!
+    
+\end{frame}
+
+\begin{frame}[fragile]{Objective Functions}
+
+Objective functions are wrapped in \texttt{smoof} functions. They contain:\\
+\begin{itemize}
+  \item name,
+  \item the function,
+  \item definition of the domain (search space),
+  \item optimization direction
+  \item and further meta information \ldots
+\end{itemize}
+
+<<get_started_smoof_simple, echo = TRUE>>=
+fun = makeSingleObjectiveFunction(
+  id = "simple.example", 
+  fn = function(x) x[1]^2 * sin(x[2]),
+  par.set = makeNumericParamSet("x", len = 2, lower = -5, upper = 5),
+  minimize = TRUE
+)
+@
+
+\end{frame}
+
+\begin{frame}[fragile]{\texttt{smoof} and \texttt{ParamHelpers} Package}
+
+<<get_started_smoof_int, include = FALSE>>=
+complicatedFunction = function(a, b, c, conf) {
+  if (a == "foo") conf$f(conf$d)^b + c
+  else conf$f(conf$d)^b - c
+}
+@
+
+Wrap external functions with \texttt{smoof::makeSingleObjectiveFunction()}.\\
+The search space is always described in a \emph{Parameter Set}.\\
+
+<<get_started_smoof, echo = TRUE>>=
+fun = makeSingleObjectiveFunction(
+  id = "example", 
+  fn = function(x) 
+    complicatedFunction(x$a, x$b, c = 10, conf = list(d = x$d, e = x$e, f = x$f)), 
+  par.set = makeParamSet(
+    makeDiscreteParam("a", values = c("foo", "bar")),
+    makeIntegerParam("b", lower = 0, upper = 10),
+    makeNumericParam("d", lower = -5, upper = 5, trafo = function(x) 2^x),
+    makeLogicalParam("e"),
+    makeDiscreteParam("f", list("sin" = sin, "cos" = cos))
+  ),
+  minimize = TRUE, has.simple.signature = FALSE
+)
+x = sampleValue(getParamSet(fun), trafo = TRUE)
+fun(x)
+@
+
+\end{frame}
+
+\begin{frame}[fragile]{\texttt{ParamHelpers}: Dependent Parameters}
+
+The \emph{Parameter Set} can even contain complex dependencies:
+
+\begin{center}
+  \begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=3cm,
+    circ/.style={circle,draw,font=\scriptsize},
+    rect/.style={rectangle,draw,font=\scriptsize}]
+    \node[draw=none,fill=none] (X) at (0, 0) {$\mathbb X$};
+    \node[circ]  (parSwitch) at (1.3, 0) {\texttt{switch}};
+    \node[rect] (valA) at (3, 0.5){methodA};
+    \node[rect] (valB) at (3, -0.5){methodB};
+    \node[circ] (parA) at (4.5, 0.5) {\texttt{a.x}};
+    \node[circ] (parB) at (4.5, -0.5) {\texttt{b.x}};
+    \node[rect] (parBvals) at (6, -0.5) {$[-1, 1]$};
+    \node[rect] (parAvals) at (6, 0.5) {$[0, 10]$};
+    \path[every node/.style={font=\sffamily\small}]
+    (X) edge node {}(parSwitch)
+    (parSwitch) edge node {}(valB)
+    edge node {}(valA)
+    (valA) edge node {}(parA)
+    (parA) edge node {}(parAvals)
+    (valB) edge node {}(parB)
+    (parB) edge node {}(parBvals);
+  \end{tikzpicture}
+\end{center}
+
+<<get_started_dependent, echo = TRUE>>=
+ps = makeParamSet(
+  makeDiscreteParam("switch", values = c("methodA", "methodB")),
+  makeNumericParam("a.x", 0, 10, requires = quote(switch == "methodA")),
+  makeNumericParam("b.x", -1, 1, requires = quote(switch == "methodB"))
+)
+@
+
+\end{frame}
+
+
+\begin{frame}{\texttt{smoof}: Arguments}
+
+\begin{itemize}
+  \item Single objective: \texttt{makeSingleObjectiveFunction()}
+    \begin{itemize}
+      \item non deterministic: \texttt{noisy = TRUE}
+      \item arguments as list: \texttt{has.simple.signature = FALSE}
+      \item maximize: \texttt{minimize = FALSE} 
+    \end{itemize}
+  \item Multi objective: \texttt{makeMultiObjectiveFunction()}
+    \begin{itemize}
+      \item number of objectives: \texttt{n.objectives}
+      \item non deterministic: \texttt{noisy = TRUE}
+      \item arguments as list: \texttt{has.simple.signature = FALSE}
+      \item maximize: e.g.: \texttt{minimize = c(FALSE, FALSE)}
+    \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{Initial Design}
+<<get_started_design, eval = FALSE, echo = TRUE>>=
+mbo(..., design = des, ...)
+@
+Default:
+\begin{itemize}
+  \item MBO draws LHS-Sample with $4*d$ points.
+  \item MBO first evaluates initial design.
+\end{itemize}
+
+Options:
+\begin{itemize}
+  \item Pass design of x-values (one per row)\\
+  \begin{itemize}
+    \item e.g.\ \texttt{ParamHelpers::generateDesign()}
+  \end{itemize}
+  \item Pass design of x and y-values
+  \begin{itemize}
+    \item Saves computation time if results are already known.
+  \end{itemize}
+\end{itemize}
+
+Use-cases for manual designs:
+\begin{itemize}
+  \item Specific values known that perform well.
+  \item Results of previous evaluations.
+\end{itemize}
+
+\end{frame}
+
+% section mlrmbo_introduction (end)
+
+\section{mlrMBO for Hyperparameter Optimization} % (fold)
+\label{sec:mlrmbo_for_hyperparameter_optimization}
+
+\begin{frame}[fragile]{\texttt{mlr:} Define Objective Function}
+
+Define objective function as the performance measured by a resampling done with \texttt{mlr}~\xfootcite{Bischl_2016}:
+
+<<hyperparam_manual, echo = TRUE, warning = FALSE>>=
+par.set = makeParamSet(
+  makeNumericParam("cost", -15, 15, trafo = function(x) 2^x),
+  makeNumericParam("gamma", -15, 15, trafo = function(x) 2^x)
+)
+svm = makeSingleObjectiveFunction(name = "svm.tuning",
+  fn = function(x) {
+    lrn = makeLearner("classif.svm", par.vals = x)
+    resample(lrn, iris.task, cv3, show.info = FALSE)$aggr
+  },
+  par.set = par.set, noisy = TRUE, 
+  has.simple.signature = FALSE, minimize = TRUE
+)
+ctrl = makeMBOControl()
+ctrl = setMBOControlTermination(ctrl, iters = 10)
+res = mbo(svm, control = ctrl, show.info = FALSE)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Define Objective Function}
+
+<<hyperparam_manual2, echo = TRUE, fig.height = 2.8>>=
+plot(res$final.opt.state)
+kable(tail(as.data.frame(res$opt.path)[,c("cost", "gamma", "y", "dob", 
+  "exec.time", "train.time")], 4))
+@
+    
+\end{frame}
+
+\begin{frame}[fragile]{Use \texttt{mlr} tuning interface}
+<<hyperparam_mlr, echo = TRUE, warning = FALSE>>=
+ctrl = makeMBOControl()
+ctrl = setMBOControlTermination(ctrl, iters = 10)
+tune.ctrl = makeTuneControlMBO(mbo.control = ctrl)
+res = tuneParams(makeLearner("classif.svm"), iris.task, cv5, 
+  par.set = par.set, control = tune.ctrl, show.info = FALSE)
+res
+kable(tail(as.data.frame(res$opt.path), 4))
+@
+\end{frame}
+
+% section mlrmbo_for_hyperparameter_optimization (end)
+
+\section{Advanced Settings for MBO} % (fold)
+\label{sec:advanced_settings_for_mbo}
+
+\begin{frame}{Surrogate Model}
+
+<<advanced_surrogate, show = TRUE, eval = FALSE>>=
+mbo(..., learner = makeLearner('regr.GPfit'), ...)
+@
+
+Default:
+\begin{itemize}
+  \item Kriging (\texttt{mlr}: \texttt{"regr.km"}) for numerical search spaces.
+  \item Random Forest (\texttt{mlr}: \texttt{"regr.randomForest"}) otherwise.
+\end{itemize}
+
+Options:
+\begin{itemize}
+  \item All regression learners integrated in \texttt{mlr}.
+  \item \texttt{pred.type = "se"} needed for \emph{infill criteria}.
+  \item Wrap learners with \texttt{mlr} wrappers for additional functionality.
+\end{itemize}
+
+Notes:
+\begin{itemize}
+  \item \texttt{"regr.km"} can crash sometimes
+  \item \texttt{"regr.GPfit"} more stable
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Infill Criteria}
+
+<<advanced_infill, show = TRUE, eval = FALSE>>=
+ctrl = setMBOControlInfill(ctrl, crit = crit.ei)
+@
+
+Possible infill criteria:
+\begin{itemize}
+  \item Mean Response: \texttt{crit.mr} (no exploration)
+  \item Uncertainty: \texttt{crit.se} (no exploitation)
+  \item Confidence Bound: \texttt{crit.cb}, \texttt{makeMBOInfillCritCB(lambda = 3)}
+  \item \textbf{Expected Improvement}: \texttt{crit.ei}
+  \item Noisy objective function
+  \begin{itemize}
+    \item Expected Quantile Improvement: \texttt{crit.eqi}
+    \item Augmented Expected Improvement: \texttt{crit.aei}
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Advanced Hints}
+
+Frequently requested topics:
+  \begin{itemize}
+    \item Optimization Path: \texttt{as.data.frame(res\$opt.path)}
+    \item Use MBO to optimize a Algorithm via CLI: \url{mlr-org.github.io/mlrMBO/articles/supplementary/mlrmbo_and_the_command_line.html}
+    \item Investigate surrogate model: \texttt{makeMBOControl(store.model.at = c(1,5,10), ...)}
+    \item Continue if surrogate model crashes: \texttt{makeMBOControl(on.surrogate.error = "warn", ...)}
+    \item Continue if objective function returns \texttt{NA}: \texttt{makeMBOControl(impute.y.fun = function(x, y, opt.path) 0, ...)}
+    \item Visualization: \texttt{runExampleRun()}, \texttt{plotExampleRun()} or \ldots
+    \item Human in the Loop \url{https://mlr-org.github.io/mlrMBO/articles/supplementary/human_in_the_loop_MBO.html}
+  \end{itemize}
+
+
+
+\end{frame}
+
+% section advanced_settings_for_mbo (end)
+
+\section{Multi-point Proposals and Parallelization} % (fold)
+\label{sec:multipoint_proposals}
+
+\begin{frame}{Scenarios?}
+
+  \begin{minipage}{0.55\textwidth}
+    Objective function \ldots
+    \begin{itemize}
+      \item[\ldots] can be parallelized? \\
+      $\Rightarrow$ parallelize objective function.
+      \item[\ldots] can not be further parallelized / still available resources.\\
+      $\Rightarrow$ use multi-point proposals! 
+    \end{itemize}    
+  \end{minipage}
+  \begin{minipage}{0.35\textwidth}
+    \resizebox{!}{\linewidth}{%
+      \begin{tikzpicture}
+        \node[] (ufo) {\includegraphics[width=3cm]{figure/ufo.png}};
+        \begin{scope}[on background layer]
+        \node[left of = ufo, yshift = 0.75cm, xshift = -1cm] (ufo2) {\includegraphics[width=1.8cm]{figure/ufo.png}};
+        \node[right of = ufo, yshift = 0.5cm, xshift = 0.5cm] (ufo3) {\includegraphics[width=1.6cm]{figure/ufo.png}};
+        \end{scope}
+        \node[below of = ufo, xshift = -1cm, yshift = -2cm] (earth) {\includegraphics[width=4.5cm]{figure/flat_earth.png}};
+        \draw[-stealth, thick] (earth.south west) -- (earth.north west) node[midway, above, rotate=90, line width=10pt] {$x_1$};
+        \draw[-stealth, thick] (earth.south west) -- (earth.south east) node[midway, below] {$x_2$};
+        \draw[draw=green, line width = 1.5pt] ([shift=({-0.2cm,-1cm})]ufo.center) -- ([shift=({0.3cm,0.2cm})]earth.center);
+        \draw[draw=green, line width = 1.2pt] ([shift=({0cm,0cm})]ufo2.south) -- ([shift=({-1cm,0.25cm})]earth.center);
+        \begin{scope}[on background layer]
+          \draw[draw=green, line width = 1.2pt] ([shift=({0cm,0cm})]ufo3.south) -- ([shift=({0.75cm,-0.2cm})]earth.center);
+        \end{scope}
+        \node (wifi) at ([shift=({0.8cm,-0.2cm})]ufo.north) {\faWifi};
+        \node (wifi2) at ([shift=({0.5cm,-0.1cm})]ufo2.north) {\faWifi};
+        \node (wifi3) at ([shift=({0.5cm,-0.1cm})]ufo3.north) {\faWifi};
+      \end{tikzpicture}
+    }
+  \end{minipage}
+
+
+Proposition methods:
+\begin{itemize}
+  \item Constant Liar: Iterative, suggests point, adds preliminary fictitious result into the design. \emph{(costly)}
+  \item qCB: Vary uncertainty weights. \emph{(cheaper)}
+  \item \ldots
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Example: qCB}
+
+<<geo2smoofMP, include = FALSE, fig.width = 3.5, fig.height = 4.5>>=
+ctrl = makeMBOControl(propose.points = 1)
+ctrl = setMBOControlInfill(control = ctrl, crit = crit.cb)
+ctrl = setMBOControlTermination(ctrl, iters = 10)
+set.seed(1)
+des = generateDesign(n = 4L, par.set = getParamSet(sf1d))
+des$y = sf1d(as.matrix(des))
+
+smbo = initSMBO(par.set = getParamSet(sf1d), design = des, control = ctrl, minimize = FALSE, learner = lrn2)
+for (i in 1:3) {
+  lambda.vals = round(rexp(3, 0.5),1)
+  crit.cbs = lapply(lambda.vals, makeMBOInfillCritCB)
+  crit.cbs = lapply(crit.cbs, function(x) mlrMBO:::initCrit(x, fun = smbo$opt.problem$fun, design = smbo$opt.problem$design, learner = lrn2, control = ctrl))
+  xpoints = data.frame(coords2 = seq(from = 27, to = 30, by = 0.02))
+  crit.points = lapply(crit.cbs, function(fun) {
+    fun$fun(points = xpoints, models = mlrMBO:::getOptStateModels(smbo)$models, control = smbo$opt.problem$control, par.set = getParamSet(smbo$opt.problem$fun), designs = mlrMBO:::getOptStateDesigns(smbo))  
+  })
+  all.crit.points = do.call(cbind.data.frame, c(crit.points, xpoints))
+  colnames(all.crit.points)[seq_along(crit.cbs)] = paste0("lambda", lambda.vals)
+  all.crit.points = reshape2::melt(all.crit.points, id.vars = "coords2", variable.name = "lambda")
+  all.crit.points$variable = "cb"
+  all.crit.points$value = all.crit.points$value * (-1)
+  
+  props = lapply(crit.cbs, function(x) {
+    smbo$opt.problem$control$infill.crit = x
+    proposePoints(smbo)  
+  })
+  props2 = do.call(rbind, purrr::map(props, "prop.points"))
+  y = sf1d(props2)
+  
+  dfrpop = cbind(props2, variable = "cb", type = "prop", value = -1 * purrr::map_dbl(props, "crit.vals"))
+  
+  g = plot(smbo) + ggbeam + ggplot2::facet_grid(variable~., scales = "free_y")
+  g$data = g$data[g$data$variable != "cb", ]
+  g = g + geom_line(data = all.crit.points, aes(linetype = lambda))
+  g = g + geom_point(data = dfrpop, aes(color = type))
+  g = g + ggplot2::scale_color_manual(values = c(init = "red", seq = "green", prop = "blue"))
+  print(g)
+  updateSMBO(smbo, x = props2, y = as.list(y))  
+}
+df.real = data.frame(value = sf1d(xpoints$coords2), coords2 = xpoints$coords2, variable = "mean")
+g = g + geom_line(data = df.real, color = "brown", size = 1, alpha = 0.7)
+print(g)
+@
+
+%\begin{columns}
+  \begin{minipage}{0.55\textwidth}
+    %\vspace{-2cm}
+    \begin{figure}[H]
+      \begin{overprint}
+      \foreach \x in {1,2,3}{%
+        \only<\x>{%
+          \includegraphics[width=\linewidth]{figure/beamer-geo2smoofMP-\x.pdf}
+        }
+      }
+      \end{overprint}
+    \end{figure}
+  \end{minipage}
+  \begin{minipage}{0.42\textwidth}
+  $CB(\xv) = \hat{\mu}(\xv) + \lambda \cdot \sh(\xv)$ 
+    \begin{itemize}
+      \item CB with small $\lambda$: search close to known optimum: \emph{exploitation}.
+      \item CB with high $\lambda$: explore unevaluated areas: \emph{exploration}.
+      \item Problem: Points can be close to each other.
+      \item Solution: Use \emph{Constant Liar}.
+    \end{itemize}
+  \end{minipage}
+%\end{columns}
+
+\end{frame}
+
+\begin{frame}[fragile]{Example: Parallelization}
+
+Use \emph{Expected Improvement} as infill criterion and the \emph{constant liar} method to generate multiple proposals:
+
+<<mlrmbo_parallel_example, echo = TRUE, warning = FALSE>>=
+set.seed(1)
+obj.fun = makeBraninFunction()
+ctrl = makeMBOControl(propose.points = 2)
+ctrl = setMBOControlInfill(ctrl, crit = crit.ei)
+ctrl = setMBOControlMultiPoint(ctrl, method = "cl", cl.lie = min)
+ctrl = setMBOControlTermination(ctrl, iters = 6)
+library(parallelMap)
+parallelStartMulticore(cpus = 2, level = "mlrMBO.feval")
+res = mbo(obj.fun, control = ctrl, show.info = FALSE)
+parallelStop()
+res
+@
+    
+\end{frame}
+
+\begin{frame}[fragile]{Example: Parallelization}
+
+Use the points in the \emph{Optimization Path} and plot them over the true response surface of the objective function:
+
+<<mlrmbo_parallel_example2, echo = TRUE, fig.height = 4, out.width = "0.6\\linewidth", fig.width = 5>>=
+autoplot(obj.fun, render.levels = TRUE, show.optimum = TRUE) + 
+geom_text(data = as.data.frame(res$opt.path), mapping = aes(label = dob), color = "white")
+@
+
+\end{frame}
+
+\begin{frame}[fragile]{Parallelization in combination with \texttt{mlr}}
+
+Parallelize resampling:
+<<parallel_mlr, eval = FALSE, echo = TRUE>>=
+parallelStartMulticore(3, level = "mlr.resample")
+res = tuneParams(makeLearner("classif.svm"), iris.task, cv3, 
+  par.set = par.set, control = tune.ctrl)
+parallelStop()
+@
+
+Parallelize multiple evaluations with multi-point proposal:
+<<parallel_mlr2, eval = FALSE, echo = TRUE>>=
+ctrl = setMBOControlMultiPoint(ctrl, method = "cl", cl.lie = min)
+tune.ctrl = makeTuneControlMBO(mbo.control = ctrl)
+parallelStartMulticore(2, level = "mlrMBO.feval")
+res = tuneParams(makeLearner("classif.svm"), iris.task, holdout, 
+  par.set = par.set, control = tune.ctrl)
+parallelStop()
+@
+\end{frame}
+
+\section{Multi-objective optimization} % (fold)
+\label{sec:multi_objective_optimization}
+
+\begin{frame}{Multi-objective optimization}
+
+\begin{center}
+  {\Large \faExclamationCircle \ Goal: Optimize multiple objectives:}
+\end{center}
+\begin{itemize}
+  \item[e.g.\ ] maximize \emph{True positive rate} and
+  \item minimize \emph{False positive rate} at the same time.
+\end{itemize}
+
+\begin{center}
+  \includegraphics[width=0.45\linewidth]{figure/mc_plot.pdf}  
+\end{center}
+    
+\end{frame}
+
+\begin{frame}{ParEGO}
+<<plot_parego_visualization, fig.height=3, echo=TRUE, include=FALSE, message=FALSE, error=FALSE, results='hide', warning=FALSE>>=
+set.seed(123)
+fun = makeDentFunction()
+ctrl = makeMBOControl(n.objectives = 2)
+ctrl = setMBOControlInfill(ctrl, crit = crit.ei)
+ctrl = setMBOControlMultiObj(ctrl, method = "parego")
+res = exampleRunMultiObj(fun, control = ctrl)
+plotExampleRun(res, pause = FALSE,  iters = c(1:3, 10L))
+@
+
+  ParEGO~\xfootcite{knowles_parego:_2006} with one proposal per iteration. Line \tikz[baseline=-0.1em]\draw[line width = 0.75pt] (0,0) -- ++ (1.2em,0.3em); indicates weight vector $\vec{w}$ for scalarization $\tilde y = \vec{w} \yv$. $EI$ is calculated for $\hat{\tilde{y}}$.
+  \begin{figure}[H]
+    \centering %page 1,10
+    \begin{overprint}
+    \onslide<1>
+    \includegraphics[page=1, width=\linewidth]{figure/beamer-plot_parego_visualization-1.pdf}
+    \onslide<2>
+    \includegraphics[page=1, width=\linewidth]{figure/beamer-plot_parego_visualization-2.pdf}
+    \onslide<3>
+    \includegraphics[page=1, width=\linewidth]{figure/beamer-plot_parego_visualization-3.pdf}
+    \onslide<4>
+    \includegraphics[page=1, width=\linewidth]{figure/beamer-plot_parego_visualization-4.pdf}
+    \end{overprint}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{ParEGO}
+<<plot_parego_example, echo=TRUE, message=FALSE, error=FALSE, warning=FALSE>>=
+set.seed(1)
+fun = makeDentFunction()
+ctrl = makeMBOControl(n.objectives = 2)
+ctrl = setMBOControlInfill(ctrl, crit = crit.ei)
+ctrl = setMBOControlMultiObj(ctrl, method = "parego")
+res = mbo(fun, control = ctrl)
+res
+@
+\end{frame}
+
+\begin{frame}{SMS-EGO~\xfootcite{ponweiser_multiobjective_2008}}
+  
+  \begin{itemize}
+    \item Single-objective optimization of aggregating infill criterion: \\
+      Calculate contribution of an "optimistic estimate" ($LCB(\xv) = \hat{\yv} - \lambda \cdot \hat{\mathbf{s}}^2$) to the current Pareto front approximation $\bm{\Lambda}$.
+  \end{itemize}
+
+  \begin{columns}
+      \begin{column}{0.4\textwidth}
+        \begin{figure}[H]
+          \centering
+          \begin{overprint}
+          \onslide<1>
+          \includegraphics[width = \textwidth, page = 1]{figure/hv_plot.pdf}
+          \onslide<2>
+          \includegraphics[width = \textwidth, page = 1]{figure/hv_contr_plot.pdf}
+          \onslide<3>
+          \includegraphics[width = \textwidth, page = 1]{figure/sms_plot.pdf}
+          \end{overprint}
+        \end{figure}
+      \end{column}
+      \begin{column}{0.595\textwidth}
+        \begin{itemize}
+          \item Calculate LCB for each objective
+          \item Measure contribution with regard to the hypervolume indicator.
+          \item Propose point with highest estimated hypervolume contribution $\mathcal{S}(LCB(\xv) \cap \bm{\Lambda}) - \mathcal{S}(\bm{\Lambda})$.
+        \end{itemize}
+        \vfill
+      \end{column}
+    \end{columns}
+  
+\end{frame}
+
+\begin{frame}[fragile]{SMS-EGO}
+<<plot_dib_example, echo=TRUE, message=FALSE, error=FALSE, warning=FALSE>>=
+set.seed(1)
+fun = makeDentFunction()
+ctrl = makeMBOControl(n.objectives = 2)
+ctrl = setMBOControlInfill(ctrl, crit = crit.dib1)
+ctrl = setMBOControlMultiObj(ctrl, method = "dib")
+res = mbo(fun, control = ctrl)
+res
+@
+\end{frame}
+
+\begin{frame}[fragile]{Multi-objective optimization with \texttt{mlr}}
+
+Without \texttt{mbo.control} it defaults to \texttt{DIB} and the \texttt{budget} becomes \texttt{max.eval}.
+
+<<mlrMBO_mlr_multicrit, echo = TRUE, warning = FALSE, message = FALSE>>=
+set.seed(1)
+par.set = makeParamSet(
+  makeNumericParam("cost", -15, 15, trafo = function(x) 2^x),
+  makeNumericParam("gamma", -15, 15, trafo = function(x) 2^x)
+)
+ctrl = makeTuneMultiCritControlMBO(n.objectives = 2L, budget = 20)
+res = tuneParamsMultiCrit("classif.svm", sonar.task, cv3, par.set = par.set,
+    measures = list(tpr, fpr), control = ctrl)
+res$y
+@
+    
+\end{frame}
+
+% section multi_objective_optimization (end)
+
+\section{Complex Example} % (fold)
+\label{sec:complex_example}
+
+\begin{frame}[fragile]{Complex Example: \texttt{mlr} Model Multiplexer}
+
+<<model_multiplexer, echo = TRUE, message = FALSE, warning = FALSE>>=
+library(mlrCPO); library(dplyr); library(mlrMBO)
+lrn = c("classif.svm", "classif.ranger") %>% makeLearners() %>% 
+  makeModelMultiplexer()
+ps = makeModelMultiplexerParamSet(lrn,
+  classif.svm = makeParamSet(
+    makeNumericParam("cost", -15, 15, trafo = function(x) 2^x),
+    makeNumericParam("gamma", -15, 15, trafo = function(x) 2^x)),
+  classif.ranger = makeParamSet(
+    makeIntegerParam("mtry", lower = 1L, upper = 60L)
+  )
+)
+sur.lrn = cpoImputeAll(id = "imp", classes = list(numeric = imputeMax(2))) %>>% 
+  cpoDummyEncode(id = "dum") %>>% makeLearner("regr.km", predict.type = "se")
+ctrl = makeMBOControl() %>% setMBOControlTermination(time.budget = 60) %>% 
+  setMBOControlInfill(crit.ei) %>% makeTuneControlMBO(mbo.control = ., 
+  learner = sur.lrn) 
+res = tuneParams(lrn, sonar.task, cv3, control = ctrl, par.set = ps)
+str(res$x)
+@
+
+\end{frame}
+
+\begin{frame}[fragile]{Complex Example: \texttt{mlr} Model Multiplexer}
+
+<<model_multiplexer2, echo = TRUE, message = FALSE, warning = FALSE, fig.height=3, fig.width=7, out.width='0.875\\linewidth'>>=
+opdf = as.data.frame(res$mbo.result$opt.path)
+library(ggplot2)
+g = ggplot(opdf, aes(x = dob, y = cummin(y)))
+g = g + geom_line() + geom_point(aes(color = selected.learner, y = y))
+g + coord_cartesian(ylim = c(0.125,0.28)) + ylab("missclassification rate")
+@
+
+    
+\end{frame}
+
+% section complex_example (end)
+
+\section{Conclusion} % (fold)
+\label{sec:conclusion}
+
+\begin{frame}{Performance}
+
+Comparison of different Black-Box optimizers available in \texttt{R}~\xfootcite{Bischl_2017a}:
+\begin{center}
+  \includegraphics[width=0.65\linewidth]{figure/mbo_y_single-1.pdf}  
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Performance}
+
+\texttt{mlrMBO} vs.\ other Black-Box optimizers on \texttt{HPOlib} benchmark~\xfootcite{Bischl_2017a}:
+\begin{center}
+  \includegraphics[width=0.65\linewidth]{figure/hpolib-1.pdf} 
+\end{center}
+    
+\end{frame}
+
+\begin{frame}{Conclusion}
+
+\begin{block}{Key features}
+  \begin{itemize}
+    \item Highly customizable expensive Black-Box optimization
+    \item Integrated parallelization
+    \item Multi-objective optimization
+    \item Seamless \texttt{mlr} integration
+  \end{itemize}
+\end{block}
+
+\begin{block}{Resources}
+  \begin{itemize}
+    \item[\faBook] Help: \url{https://mlr-org.github.io/mlrMBO} $\Rightarrow$ \faFileTextO \ Topics
+    \item[\faBug] Bug + Issue Tracker: \url{https://github.com/mlr-org/mlrMBO/issues} 
+    \item[\faSlack] Slack Chanel \#mlrMBO: \url{https://mlr-org.slack.com/}
+  \end{itemize}
+\end{block}
+    
+\end{frame}
+% section conclusion (end)
+
+
+\begin{frame}[allowframebreaks]{Literature}
+  \printbibliography
+\end{frame}
+
+\end{document}

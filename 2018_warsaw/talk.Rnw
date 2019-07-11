@@ -1,0 +1,232 @@
+\documentclass[10pt]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% packages                          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{adjustbox}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,backgrounds,fit,positioning,chains,shadows,decorations.pathmorphing,decorations.pathreplacing,matrix}
+\usepackage{csquotes}
+\usepackage{booktabs}
+\usepackage{wasysym}
+\usepackage[binary-units=true]{siunitx}
+\usepackage{xcolor}
+\usepackage{pifont}
+\usepackage{dsfont}
+\usepackage{hyperref}
+
+\definecolor{tugreen}{cmyk}{0.57, 0, 1.00, 0}
+\definecolor{tugreen1}{cmyk}{0.57, 0, 1.00, 0}
+\definecolor{tugreen2}{HTML}{667E4D}
+\definecolor{tugreen3}{HTML}{72A544}
+\definecolor{tugreen4}{HTML}{3A472E}
+
+\usecolortheme{dove}
+\usetheme{boxes}
+\usefonttheme{structuresmallcapsserif}
+\newenvironment{whiteframe}
+{
+ \usebackgroundtemplate{}
+ \begin{frame}
+}
+{
+ \end{frame}
+}
+
+\usetikzlibrary{shapes,matrix,positioning,chains,arrows,shadows,decorations.pathmorphing,fit,backgrounds}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% change color of items             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\definecolor{mlrBlue}{RGB}{003,099,142}
+\setbeamercolor{itemize item}{fg=mlrBlue}
+\setbeamertemplate{itemize item}[square]
+
+\definecolor{mlrGrey}{RGB}{183,183,183}
+\setbeamercolor{itemize subitem}{fg=mlrGrey}
+
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% titlepage                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Machine Learning in R}
+\logo{\includegraphics[scale=0.05]{mlr} \hspace{1.5 mm} \vspace{- 3 mm}}
+\author{Bernd~Bischl\\ Computational Statistics, LMU}
+\titlegraphic{\includegraphics[height=.3\textheight]{mlr}}
+\date{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\norm}[2][\relax]{\ifx#1\relax\ensuremath{\left\Vert#2\right\Vert}\else\ensuremath{\left\Vert#2\right\Vert_{#1}}\fi}
+\newcommand{\ind}{\mathds{1}}
+\newcommand{\pred}[1]{\ind\left(#1\right)}
+\newcommand{\abs}[1]{\ensuremath{\left| #1 \right|}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\pkg}[1]{\texttt{#1}}
+\newcommand{\tarrow}{\textcolor{tugreen1}{{\ding{212}}}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newenvironment{vframe}
+{
+  \begin{frame}[containsverbatim]
+}
+{
+ \end{frame}
+}
+
+\newenvironment{vbframe}
+{
+  \begin{frame}[containsverbatim,allowframebreaks]
+}
+{
+ \end{frame}
+}
+
+\newenvironment{blocki*}
+{
+  \begin{block}{}\begin{itemize}
+}
+{
+\end{itemize}\end{block}
+}
+
+\newenvironment{blocki}[1]
+{
+  \begin{block}{#1}\begin{itemize}
+}
+{
+\end{itemize}\end{block}
+}
+
+\newcommand{\oneliner}[1]{\begin{block}{}\begin{center}\begin{Large}#1\end{Large}\end{center}\end{block}}
+
+
+\renewcommand<>{\sout}[1]{
+  \only#2{\beameroriginal{\sout}{#1}}
+  \invisible#2{#1}
+}
+
+\AtBeginSection{\frame{\sectionpage}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%\SweaveOpts{concordance=TRUE}
+
+<<opts,include=FALSE,cache=FALSE>>=
+library(knitr)
+library(BBmisc)
+library(mlr)
+library(ggplot2)
+library(parallelMap)
+library(tikzDevice)
+library(data.table)
+library(gridExtra)
+library(survMisc)
+library(mlrMBO)
+library(mlrCPO)
+library(iml)
+library(randomForest)
+
+options(width = 80)
+configureMlr(show.info = FALSE)
+configureMlr(show.learner.output = FALSE)
+OPENML_EVAL = TRUE
+
+knit_hooks$set(document = function(x) {
+  # silence xcolor
+  x = sub('\\usepackage[]{color}', '\\usepackage{xcolor}', x, fixed = TRUE)
+  # add an noindent after hooks -> remove blank line
+  x = gsub('(\\\\end\\{knitrout\\}[\n]+)', '\\1\\\\noindent ', x)
+  x
+})
+
+opts_chunk$set(
+   fig.path = "knitr/figures/",
+   cache.path = "knitr/cache/",
+   cache = TRUE,
+   tidy = FALSE,
+#   dev = 'tikz',
+   external = TRUE,
+   fig.align = "center",
+   size = "normalsize",
+   stop = TRUE,
+   fig.width = 9 * 0.8,
+   fig.height = 6 * 0.8,
+   small.mar = TRUE,
+   prompt = TRUE
+)
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% start                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+  \titlepage
+  \begin{center}
+  Material here: \url{goo.gl/DYzSmA}
+  \end{center}
+\end{frame}
+
+<<intro, child="intro.Rnw">>=
+@
+
+<<benchmark, child="benchmark.Rnw">>=
+@
+
+<<performance, child="performance.Rnw">>=
+@
+
+<<tuning, child="tuning.Rnw">>=
+@
+
+
+<<nested, child="nestedresample.Rnw">>=
+@
+
+<<parallel, child="parallel.Rnw">>=
+@
+
+<<mbo, child="mbo.Rnw">>=
+@
+
+<<cpo, child="cpo.Rnw">>=
+@
+ 
+<<iml, child="iml.Rnw">>=
+@
+
+<<openML, child="openml.Rnw">>=
+@
+
+<<outlook, child="outlook.Rnw">>=
+@
+
+<<foundation, child="foundation.Rnw">>=
+@
+
+
+
+
+  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
+% vim: set spelllang=en :

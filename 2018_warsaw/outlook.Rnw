@@ -1,0 +1,26 @@
+\begin{vframe}{There is more \ldots}
+  \begin{itemize}
+    \item Regression, Clustering and Survival analysis
+    \item Cost-sensitive learning 
+    \item Multi-Label learning
+    \item Imbalancy correction
+    \item Wrappers
+    \item Bayesian optimization
+    \item Multi-criteria optimization
+    \item Ensembles, generic bagging and stacking
+    \item \ldots
+  \end{itemize}
+\end{vframe}
+
+\begin{vframe}{We are working on}
+  \begin{itemize}
+    \item Even better tuning system
+    \item More interactive and 3D plots
+    \item Large-Scale learning on databases
+    \item Time-Series tasks
+    \item Large-Scale usage of OpenML
+    \item \texttt{auto-mlr}
+    \item \ldots
+  \end{itemize}
+\end{vframe}
+

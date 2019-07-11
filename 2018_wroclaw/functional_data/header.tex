@@ -1,0 +1,130 @@
+\usetheme{metropolis}
+\usepackage{appendixnumberbeamer}
+
+\usepackage{booktabs}
+\usepackage[scale=2]{ccicons}
+
+\usepackage{pgfplots}
+\usepgfplotslibrary{dateplot}
+
+\usepackage{xspace}
+\newcommand{\themename}{\textbf{\textsc{metropolis}}\xspace}
+
+\usepackage[english]{babel}
+\usepackage{dsfont}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+
+
+%% Define theme color(s):
+%% ---------------------------------------------------------------
+
+\usepackage{xcolor}
+
+\definecolor{metropolis_theme_color}{RGB}{35,55,59}
+% \definecolor{metropolis_theme_color}{RGB}{51,102,102}
+
+%% Color custimzations:
+\definecolor{blue}{RGB}{0,155,164}
+\definecolor{lime}{RGB}{175,202,11}
+\definecolor{green}{RGB}{0,137,62}
+\definecolor{titleblue}{RGB}{4,58,63}
+\definecolor{deepskyblue}{RGB}{0,191,255}
+\definecolor{mygrey}{RGB}{240,240,240}
+
+% \setbeamercolor{progress bar}{fg=deepskyblue}
+% \setbeamercolor{frametitle}{bg=titleblue}
+
+%% Shaded for nicer code highlighting:
+%% ---------------------------------------------------------------
+
+\usepackage{mdframed}
+% \usepackage{verbatim}
+
+% Define Shaded if not defined:
+\makeatletter
+\@ifundefined{Shaded}{%
+  \newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}%
+}{}
+\makeatother
+
+\renewenvironment{Shaded}{
+  \begin{mdframed}[
+    backgroundcolor=mygrey,
+    linecolor=metropolis_theme_color,
+    rightline=false,
+		leftline=false
+  ]}{
+  \end{mdframed}
+}
+
+%% Title Image:
+%% ---------------------------------------------------------------
+
+% Load transparent:
+\usepackage{transparent}
+
+% Add titlegraphic:
+\titlegraphic{
+  \vspace{2cm}
+  \hspace{5.03cm}
+  \transparent{0.2}
+  \includegraphics[width=8cm]{images/logos/LMU}
+}
+
+%% Adjust frame number to be displayd as i/n:
+%% ---------------------------------------------------------------
+\setbeamertemplate{frame numbering}{%
+  \insertframenumber{}/\inserttotalframenumber
+}
+\makeatother
+
+
+%% Include latex-math:
+%% ---------------------------------------------------------------
+% Include latex-math
+\DeclareOldFontCommand{\sf}{\normalfont\sffamily}{\mathsf}
+
+\IfFileExists{./latex-math/basic-math.tex}{
+  \input{./latex-math/basic-math.tex}
+  \input{./latex-math/ml-bagging.tex}
+  \input{./latex-math/ml-boosting.tex}
+  \input{./latex-math/ml-gp.tex}
+  \input{./latex-math/ml-mbo.tex}
+  \input{./latex-math/ml-nn.tex}
+  \input{./latex-math/ml-svm.tex}
+  \input{./latex-math/ml-trees.tex}
+}{
+  \IfFileExists{./../latex-math/basic-math.tex}{
+    \input{./../latex-math/basic-math.tex}
+    \input{./../latex-math/basic-ml.tex}
+    \input{./../latex-math/ml-bagging.tex}
+    \input{./../latex-math/ml-boosting.tex}
+    \input{./../latex-math/ml-gp.tex}
+    \input{./../latex-math/ml-mbo.tex}
+    \input{./../latex-math/ml-nn.tex}
+    \input{./../latex-math/ml-svm.tex}
+    \input{./../latex-math/ml-trees.tex}
+  }{}
+}
+
+%% Style URLs
+%% ---------------------------------------------------------------
+
+\usepackage{hyperref}
+
+\definecolor{myorange}{RGB}{225, 127, 0}
+\renewcommand\UrlFont{\color{myorange}}
+
+\DeclareRobustCommand\sectt[1]{{\fontsize{13}{12}\bfseries\ttfamily#1}}
+\DeclareRobustCommand{\ttfamily}{\fontencoding{T1}\fontfamily{lmtt}\selectfont}
+
+\newcommand{\backupbegin}{
+   \newcounter{finalframe}
+   \setcounter{finalframe}{\value{framenumber}}
+}
+\newcommand{\backupend}{
+   \setcounter{framenumber}{\value{finalframe}}
+}

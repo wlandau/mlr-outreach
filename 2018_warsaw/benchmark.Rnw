@@ -1,0 +1,288 @@
+% - Learner
+% - Benchmark experiments (demo)
+% - Resampling
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Learner                           %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{What Learners are available?}
+  \begin{scriptsize}
+  \begin{columns}
+    \column{0.5\textwidth}
+    \begin{blocki}{Classification (\Sexpr{nl["classif"]})}
+        \item LDA, QDA, RDA, MDA
+        \item Trees and forests
+        \item Boosting (different variants)
+        \item SVMs (different variants)
+        \item \ldots
+    \end{blocki}
+    \begin{blocki}{Clustering (\Sexpr{nl["cluster"]})}
+        \item K-Means
+        \item EM
+        \item DBscan
+        \item X-Means
+        \item \ldots
+    \end{blocki}
+    \column{0.4\textwidth}
+    \begin{blocki}{Regression (\Sexpr{nl["regr"]})}
+        \item Linear, lasso and ridge
+        \item Boosting
+        \item Trees and forests
+        \item Gaussian processes
+        \item \ldots
+    \end{blocki}
+    \begin{blocki}{Survival (\Sexpr{nl["surv"]})}
+        \item Cox-PH
+        \item Cox-Boost
+        \item Random survival forest
+        \item Penalized regression
+        \item \ldots
+    \end{blocki}
+  \end{columns}
+  \end{scriptsize}
+
+  \framebreak
+  
+    \begin{itemize}
+    \item Explore all learners via \href{https://mlr-org.github.io/mlr/articles/tutorial/devel/integrated_learners.html}{\underline{tutorial}}
+  \end{itemize}
+  
+  \includegraphics[width = \textwidth]{figure/tutorial_learner.png}
+  
+  \framebreak
+
+  \begin{itemize}
+    \item Or ask \pkg{mlr}
+  \end{itemize}
+
+<<listlrns1, eval=TRUE, warning=FALSE>>=
+listLearners("classif", properties = c("prob",
+  "multiclass"))[1:5, c(1,4,13,16)]
+@
+
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Train and Predict                 %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Train model}
+\begin{itemize}
+  \item Create a learner
+  \item Output prosterior probs -- instead of a factor of class labels
+\end{itemize}
+
+<<lrn>>=
+lrn = makeLearner("classif.randomForest", 
+  predict.type = "prob")
+@
+
+\begin{itemize}
+  \item Split data into a training and test data set (neccessary for performance evaluation)
+  \item And train a model
+\end{itemize}
+
+<<train>>=
+n = nrow(data)
+train = sample(n, size = 2/3 * n)
+test = setdiff(1:n, train)
+
+mod = train(lrn, task, subset = train)
+@
+
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Predictions}
+
+\begin{itemize}
+  \item Make predictions for new data
+\end{itemize}
+
+<<pred>>=
+pred = predict(mod, task = task, subset = test)
+head(as.data.frame(pred))
+@
+
+\framebreak
+
+\begin{itemize}
+  \item Evaluate predictive performance
+\end{itemize}
+
+<<>>=
+performance(pred, measures = list(mlr::acc, mlr::auc))
+@
+
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Resampling                        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Resampling}
+  \begin{itemize}
+    \item Aim: Assess the performance of a learning algorithm
+    \item Uses the data more efficiently then simple train-test
+    \item Repeatedly split in train and test, then aggregate results.
+  \end{itemize}
+  \begin{center}
+    \includegraphics[width = 0.8\textwidth]{figure/ml_abstraction-crop.pdf}
+  \end{center}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Cross Validation}
+  \begin{itemize}
+    \item Most popular resampling strategy: Cross validation with 5 or 10 folds
+    \item Split the data into $k$ roughly equally-sized partitions
+    \item Use each part once as test set and joint $k - 1$ other parts to train
+    \item Obtain $k$ test errors and average them
+    \end{itemize}
+  
+  \vspace{5 mm}
+Example of 3-fold cross-validation
+
+<<kfoldCV, eval=TRUE, echo=FALSE, fig.height=2>>=
+# par(mar = c(0, 0, 0, 0))
+# plot(1, type = "n", xlim = c(0, 10), ylim = c(0, 1), axes = FALSE)
+# rect(seq(0, 8, by = 2), 0, seq(2, 10, by = 2), 1)
+# text(seq(1, 9, by = 2), 0.5, col = c(rep("red", 2), "green", rep("red", 2)),
+#      c(rep("Train", 2), "Test", rep("Train", 2)))
+par(mar = c(0, 0, 0, 0))
+plot(1, type = "n", xlim = c(-2, 10), ylim = c(0, 3), axes = FALSE) #, main = "Example of 3-fold Cross Validation")
+rect(seq(0, 4, by = 2), 0.1, seq(2, 6, by = 2), 1, col = c("#56B4E944","#56B4E944","#E69F0044"))
+rect(seq(0, 4, by = 2), 1.1, seq(2, 6, by = 2), 2, col = c("#56B4E944","#E69F0044","#56B4E944"))
+rect(seq(0, 4, by = 2), 2.1, seq(2, 6, by = 2), 3, col = c("#E69F0044", "#56B4E944","#56B4E944"))
+
+text(seq(1, 5, by = 2), 2.55, col = c("#E69F00", "#56B4E9","#56B4E9"),
+  rev(c("Train", "Train", "Test")))
+text(seq(1, 5, by = 2), 1.55, col = c("#56B4E9","#E69F00","#56B4E9"),
+  c("Train", "Test", "Train"))
+text(seq(1, 5, by = 2), 0.55, col = c("#56B4E9","#56B4E9","#E69F00"),
+  c("Train", "Train", "Test"))
+text(rep(-1, 3), c(0,1,2) + 0.55, paste("Iteration", 3:1))
+# for (i in 1:3) #text(8, 2 - (i - 1) + 0.55, bquote(paste("=> ",widehat(Err)(widehat(f)[D[train]^.(i)], D[test]^.(i)))), cex = 1.3)
+ # text(8, 2 - (i - 1) + 0.55, bquote(paste("=> ",widehat(GE)[D[test]^.(i)])), cex = 1.3)
+@
+
+\end{vframe}
+
+
+\begin{vbframe}{Crossvalidation in \pkg{mlr}}
+<<resampl1e>>=
+rdesc = makeResampleDesc("CV", iters = 3, 
+  stratify = TRUE)
+
+r = resample(lrn, task, rdesc, 
+  measures = list(mlr::acc, mlr::auc))
+print(r)
+@
+
+\framebreak
+
+<<resample2>>=
+head(r$measures.test)
+head(as.data.frame(r$pred))
+@
+
+\end{vbframe}
+
+\begin{vframe}{Resampling methods in \pkg{mlr}}
+  \begin{center}
+    \begin{tabular}{l l}
+      \hline
+      Method & Parameters \\
+      \hline
+      \textbf{Holdout} & \texttt{split}  \\
+      & \texttt{stratify} \\
+      \textbf{CV} & \texttt{iters}  \\
+      & \texttt{stratify} \\
+      \textbf{LOO} & \\
+      \textbf{RepCV} & \texttt{reps}  \\
+      & \texttt{folds}  \\
+      & \texttt{stratify} \\
+      \textbf{Subsample} & \texttt{iters}  \\
+      & \texttt{split} \\
+      & \texttt{stratify} \\
+      \textbf{Bootstrap} & \texttt{iters}  \\
+      & \texttt{stratify} \\
+      \hline
+    \end{tabular}
+  \end{center}
+  
+\end{vframe}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Benchmarking                      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Benchmarking and Model Comparison}
+  \begin{itemize}
+    \item Comparison of multiple models on multiple data sets
+    \item Aim: Find best learners for a data set or domain, learn about learner characteristics, \ldots
+  \end{itemize}
+
+<<benchmarking, eval=FALSE>>=
+bmr = benchmark(list.of.learners, list.of.tasks, rdesc)
+@
+
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{R Example: Algorithms}
+  \begin{itemize}
+    \item Benchmark experiment - Compare 4 algorithms
+  \end{itemize}
+
+<<bmrTitanic, eval=TRUE>>=
+set.seed(3)
+
+learners = c("glmnet", "naiveBayes", "randomForest", 
+  "ksvm")
+learners = makeLearners(learners, type = "classif", 
+  predict.type = "prob")
+
+bmr = benchmark(learners, task, rdesc, 
+  measures = mlr::auc)
+@
+
+\framebreak
+
+\begin{itemize}
+    \item Access aggregated results
+  \end{itemize}
+<<>>=
+getBMRAggrPerformances(bmr, as.df = TRUE)
+@
+
+\framebreak
+
+\begin{itemize}
+    \item Access more fine-grained results
+    \item Many more getters for predictions, models, etc.
+  \end{itemize}
+<<>>=
+head(getBMRPerformances(bmr, as.df = TRUE), 4)
+@
+
+
+\framebreak
+
+<<plotBMR, eval=TRUE, fig.height=4>>=
+plotBMRBoxplots(bmr)
+@
+
+\end{vbframe}
+
+
+

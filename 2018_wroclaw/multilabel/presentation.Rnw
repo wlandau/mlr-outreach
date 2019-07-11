@@ -1,0 +1,331 @@
+\documentclass[10pt]{beamer}
+
+%% include header:
+\input{./header}
+
+%% include template:
+\input{./templates/metropolis_cert}
+
+
+%% Title:
+%% ----------------------------------------
+
+\title{Multilabel Classification in mlr}
+\date{July 4th, 2018}
+\author{Quay Au}
+\institute{LMU Munich\\Working Group Computational Statistics}
+
+%% Wrap Shaded around Shunk to have a nices R output:
+%% --------------------------------------------------
+
+\let\Oldkframe\kframe
+\let\endOldkframe\endkframe
+
+\renewenvironment{kframe}
+ {\scriptsize\definecolor{shadecolor}{RGB}{240,240,240}\begin{Shaded}\Oldkframe}
+ {\endOldkframe\end{Shaded}\normalsize}
+
+%% Prevent code from printing over margin:
+%% --------------------------------------------------
+
+<<echo=FALSE, message = FALSE>>=
+options(width=60)
+set.seed(1337)
+library(BBmisc)
+@
+
+%% Content:
+%% ----------------------------------------
+
+\begin{document}
+
+<<include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+  concordance=TRUE
+)
+@
+\maketitle
+
+\begin{frame}[fragile]{Table of contents}
+	\setbeamertemplate{section in toc}[sections numbered]
+	\tableofcontents[hideallsubsections]
+\end{frame}
+
+\section{What is Multilabel Classification?}
+% \begin{frame}[fragile]{What is (not) Multilabel Classification}
+% \centering
+% \includegraphics[scale = .5]{figures/pic1.png}
+%
+% \begin{itemize}
+%   \item Does this picture contain a tree?
+%   \begin{itemize}
+%     \item Possible answers: YES or NO
+%     \item This is binary classification (not multilabel classification)
+%   \end{itemize}
+% \end{itemize}
+% % * Does this picture contain a tree?
+% %     * Possible answers: YES or NO
+% %     * This is binary classification (not multilabel classification)
+% \end{frame}
+
+\begin{frame}[fragile]{What is Multilabel Classification}
+  \centering
+  \includegraphics[scale = .5]{figures/pic1.png}
+  \begin{itemize}
+  \item What labels are relevant in this picture?
+
+\begin{table}[]
+\centering
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Tree & Mountain & Water & Sunset & Desert \\ \hline
+YES  & YES      & YES   & YES    & NO     \\ \hline
+\end{tabular}
+\end{table}
+
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{What is Multilabel Classification}
+  \centering
+  \includegraphics[scale = .5]{figures/pic2.png}
+  \begin{itemize}
+  \item What labels are relevant in this picture?
+
+\begin{table}[]
+\centering
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Tree & Mountain & Water & Sunset & Desert \\ \hline
+YES  & NO      & YES   & NO    & YES     \\ \hline
+\end{tabular}
+\end{table}
+
+\end{itemize}
+\end{frame}
+
+% \begin{frame}[fragile]{Further Examples}
+%   \begin{itemize}
+%     \item Text classification
+%     \begin{itemize}
+%       \item A newspaper article can have the labels \textit{news} \textbf{and} \textit{sports}
+%     \end{itemize}
+%     \item Music genre classification
+%     \begin{itemize}
+%       \item A song can be classified as \textit{rock song} \textbf{and} \textit{ballad}
+%     \end{itemize}
+%   \end{itemize}
+% \end{frame}
+
+\begin{frame}[fragile]{Multilabel vs. Multiclass}
+  \centering
+  \includegraphics[scale = .5]{figures/pic3_1.png}
+
+  \begin{itemize}
+    \item Age rating
+    \begin{itemize}
+      \item Possible ratings: $\{ 0, 12, 16, 18\}$
+      \item Each movie can only be assigned \textbf{one} rating
+      \item \textbf{Multiclass} classification problem
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Multilabel vs. Multiclass}
+  \centering
+  \includegraphics[scale = .5]{figures/pic3_2.png}
+
+  \begin{itemize}
+    \item Genre classification
+    \begin{itemize}
+      \item Possible genres: $\{$Comedy, Sci-Fi, Horror, Romance, Action,  ...$\}$
+      \item Each movie can be categorized into \textbf{more than} one genre
+      \item \textbf{Multilabel} classification problem
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\section{Modeling Multilabel Problems}
+
+\begin{frame}[fragile]{Modeling Multilabel Problems}
+  \begin{itemize}
+    \item Algorithm adaptation methods
+      \begin{itemize}
+        \item Directly handle multilabel data
+        \item E.g. \textbf{randomForestSRC}
+      \end{itemize}
+    \item Problem transformation methods
+      \begin{itemize}
+        \item Transform the multilabel problem into binary problems
+          \begin{itemize}
+            \item Using label information as features
+          \end{itemize}
+        \item Many available binary classifiers
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Problem Transformation Methods in mlr}
+    Available problem transformation methods in mlr:
+
+    \begin{table}[ht]
+\centering
+\begin{tabular}{rll}
+\toprule
+& True labels & Pred. labels \\
+\midrule
+Partial cond. & Classifier chains & Nested stacking \\
+Full cond. & Dependent binary relevance & Stacking \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Benchmark paper: \href{https://journal.r-project.org/archive/2017/RJ-2017-012/RJ-2017-012.pdf}{Multilabel Classification with R Package mlr}
+
+\end{frame}
+
+% \begin{frame}[fragile]{Example: Chaining}
+%   \begin{itemize}
+%     \item Problem transformation method
+%     \item True labels are used as additional features and are chained along a chosen order
+%     \item $m := \#\text{labels}$ classifiers are trained
+%   \end{itemize}
+% \end{frame}
+
+\begin{frame}[fragile]{Example: Chaining}
+  \centering
+  \includegraphics[scale = .3]{figures/pic4.png}
+
+  \begin{center}
+  Example for order: $y_1 \rightarrow y_2 \rightarrow y_3$
+  \end{center}
+\end{frame}
+
+
+\begin{frame}[fragile]{Example: Chaining}
+  \begin{itemize}
+    \item How to predict a new observation?
+      \begin{itemize}
+        \item True label information is not available for a new observation
+        \item Label information is obtained by using classifiers along the chain
+      \end{itemize}
+    \includegraphics[scale = .3]{figures/pic5.png}
+  \end{itemize}
+\end{frame}
+
+\section{How to Measure Performance?}
+
+\begin{frame}[fragile]{How to Measure Performance?}
+Performance can be measured on a \textit{per instance}-basis:
+\begin{itemize}
+  \item $\text{subset}_{0/1}\left(\mathbf{y}, \hat{\mathbf{y}}\right) = \mathds{1}_{\left(\mathbf{y} \neq \hat{\mathbf{y}}\right)}$
+  \item $\text{HammingLoss}\left(\mathbf{y}, \hat{\mathbf{y}}\right) = \frac{1}{m}\sum_{k = 1}^m \mathds{1}_{\left(\mathbf{y}_k \neq \hat{\mathbf{y}}_k\right)}$
+  \item Also $F_1$, precision and recall can be defined on a per instance basis
+\end{itemize}
+Also possible: label-based performance measures
+\end{frame}
+
+\section{Multilabel Classification in mlr}
+\begin{frame}[fragile]{Multilabel Classification in mlr}
+  Example: yeast dataset (available with mlr)
+\begin{itemize}
+  \item Gene expression data
+  \item Each of $n = 2417$ genes is represented with 103 features
+  \item $m = 14$ different labels can be assigned to a gene
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Data Format}
+<<echo = TRUE, warning = FALSE, message = FALSE>>=
+library(mlr)
+yeast = getTaskData(yeast.task, target.extra = TRUE)
+yeast$data[1:5, 1:5]
+@
+\end{frame}
+
+\begin{frame}[fragile]{Data Format}
+ Targets must be logical vectors, indicating presence/absence of labels
+<<echo = TRUE, warning = FALSE, message = FALSE>>=
+yeast$target[1:5, 1:5]
+@
+\end{frame}
+
+\begin{frame}[fragile]{Multilabel Task}
+<<echo = FALSE, warning = FALSE>>=
+yeast.data = cbind(yeast$data, yeast$target)
+y.task = makeMultilabelTask(data = yeast.data, target = names(yeast$target))
+myMultilabelPrint = function(x, ...) {
+  y = getTaskTargets(x)
+  sums = colSums(y)
+  mlr:::print.SupervisedTask(x, print.target = FALSE)
+  catf("Classes: %i", ncol(y))
+  print(sums)
+}
+@
+
+<<echo = TRUE, warning = FALSE, message = FALSE, eval = FALSE>>=
+yeast.data = cbind(yeast$data, yeast$target)
+y.task = makeMultilabelTask(data = yeast.data, target = names(yeast$target))
+y.task
+@
+<<echo = FALSE>>=
+myMultilabelPrint(y.task)
+@
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Create Multilabel Learners}
+Algorithm adaptation method:
+<<>>=
+lrn.rfSRC = makeLearner("multilabel.randomForestSRC")
+@
+
+Problem transformation method:
+<<>>=
+lrn.rf = makeLearner("classif.ranger")
+lrn.rf.cc = makeMultilabelClassifierChainsWrapper(lrn.rf)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Train and Predict}
+<<>>=
+n = getTaskSize(y.task)
+train.set = seq(1, n, by = 2)
+test.set = seq(2, n, by = 2)
+
+mod.rfSRC = train(lrn.rfSRC, task = y.task, subset = train.set)
+mod.rf.cc = train(lrn.rf.cc, task = y.task, subset = train.set)
+
+pred.rfSRC = predict(mod.rfSRC, task = y.task, subset = test.set)
+pred.rf.cc = predict(mod.rf.cc, task = y.task, subset = test.set)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Accessing Performance Values}
+<<>>=
+performance(pred.rfSRC,
+  measures = list(multilabel.subset01, multilabel.hamloss))
+performance(pred.rf.cc,
+  measures = list(multilabel.subset01, multilabel.hamloss))
+@
+\end{frame}
+
+\begin{frame}[fragile]{Outlook}
+\begin{itemize}
+  \item Multilabel classification is a subclass of the more generalized multi-output prediction problem, where targets can be of any kind
+  \item This includes multivariate regression as well
+  \item Implementation in mlr is planned
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Links}
+\begin{itemize}
+  \item Tutorial: http://mlr-org.github.io/mlr/articles/tutorial/devel/multilabel.html
+  \item Benchmark paper: https://journal.r-project.org/archive/2017/RJ-2017-012/RJ-2017-012.pdf
+\end{itemize}
+\end{frame}
+
+
+\end{document}

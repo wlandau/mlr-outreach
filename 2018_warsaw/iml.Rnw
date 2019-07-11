@@ -1,0 +1,120 @@
+% - IML
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% IML                               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Interpretable Machine Learning}
+  \begin{itemize}
+    \item \pkg{iml} - Interpretable Machine Learning - \url{https://github.com/christophM/iml}
+    \item Background
+    \begin{itemize}
+      \item Machine learning has a huge potential 
+      \item Lack of explanation hurts trusts and creates barrier for machine learning adoption
+      \item Interpretation of the behaviour and explanation of predictions of machine learning model with \textbf{Interpretable Machine Learning}
+    \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Supported methods}
+  \begin{itemize}
+    \item Model-agnostic interpretability methods for \textbf{any} kind of machine learning model
+    \item Supported are
+    \begin{itemize}
+      \item Feature importance
+      \item Partial dependence plots
+      \item Individual conditional expectation plots
+      \item Tree surrogate
+      \item Local interpretable model-agnostic explanations
+      \item Shapley value
+    \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  
+\begin{vbframe}{One IML model for all methods}
+
+\begin{itemize}
+    \item Use \pkg{iml} package
+  \end{itemize}
+  
+<<imlLibrary, eval=TRUE>>=
+library(iml)
+@
+
+  \begin{itemize}
+    \item We use our trained model \texttt{mod}
+    \item We need training data from the index vector \texttt{train}
+  \end{itemize}
+
+<<mlModel, eval=TRUE>>=
+mod
+@
+
+<<include=FALSE>>=
+train.data = data[rownames(data) %in% train, ]
+@
+
+\framebreak
+
+  \begin{itemize}
+    \item Extract features
+    \item Create IML model
+  \end{itemize}
+
+<<imlModel, eval=TRUE>>=
+X = dropNamed(train.data, "Survived")
+iml.mod = Predictor$new(mod, data = X, 
+  y = train.data$Survived, class = 2)
+@
+
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Feature Importance}
+
+  \begin{itemize}
+    \item What were the most important features?
+  \end{itemize}
+
+<<featImp, eval=TRUE, fig.height=4, warning=FALSE, message=FALSE, cache=FALSE>>=
+imp = FeatureImp$new(iml.mod, loss = "ce")
+plot(imp)
+@
+
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Partial Dependence Plots}
+  \begin{itemize}
+    \item How does the ``passenger class'' influence the prediction on average?
+  \end{itemize}
+
+<<pdp, eval=TRUE, fig.height=3, warning=FALSE, message=FALSE, cache=FALSE>>=
+pdp = PartialDependence$new(iml.mod, feature = "Pclass")
+plot(pdp)
+@
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Local Linear Models (LIME)}
+  \begin{itemize}
+    \item Explain a single prediction with LIME
+  \end{itemize}
+
+<<lime, eval=TRUE, message=FALSE, fig.height=3, warning=FALSE, message=FALSE, cache=FALSE>>=
+X[1,]
+
+lime = LocalModel$new(iml.mod, x.interest = X[1,])
+plot(lime)
+@
+
+\end{vframe}

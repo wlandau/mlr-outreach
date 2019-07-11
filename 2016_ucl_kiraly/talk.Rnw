@@ -1,0 +1,1125 @@
+\documentclass[11pt]{beamer}
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{adjustbox}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,backgrounds,fit,positioning,chains,shadows,decorations.pathmorphing,decorations.pathreplacing,matrix}
+\usepackage{csquotes}
+\usepackage{booktabs}
+\usepackage{wasysym}
+\usepackage[binary-units=true]{siunitx}
+\usepackage{xcolor}
+\usepackage{pifont}
+\usepackage{dsfont}
+
+\definecolor{tugreen}{cmyk}{0.57, 0, 1.00, 0}
+\definecolor{tugreen1}{cmyk}{0.57, 0, 1.00, 0}
+\definecolor{tugreen2}{HTML}{667E4D}
+\definecolor{tugreen3}{HTML}{72A544}
+\definecolor{tugreen4}{HTML}{3A472E}
+
+\usecolortheme{dove}
+\usetheme{boxes}
+\usefonttheme{structuresmallcapsserif}
+\newenvironment{whiteframe}
+{
+ \usebackgroundtemplate{}
+ \begin{frame}
+}
+{
+ \end{frame}
+}
+
+\usetikzlibrary{shapes,matrix,positioning,chains,arrows,shadows,decorations.pathmorphing,fit,backgrounds}
+\setbeamercolor{itemize item}{fg=tugreen1}
+\setbeamercolor{itemize subitem}{fg=tugreen1}
+\setbeamertemplate{itemize item}[square]
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+\title{Machine Learning in R: Package \texttt{mlr}}
+\author{Bernd~Bischl \\ tiny.cc/cdfmay}
+\date{}
+
+\newcommand{\norm}[2][\relax]{\ifx#1\relax\ensuremath{\left\Vert#2\right\Vert}\else\ensuremath{\left\Vert#2\right\Vert_{#1}}\fi}
+\newcommand{\ind}{\mathds{1}}
+\newcommand{\pred}[1]{\ind\left(#1\right)}
+\newcommand{\abs}[1]{\ensuremath{\left| #1 \right|}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\pkg}[1]{\texttt{#1}}
+\newcommand{\tarrow}{\textcolor{tugreen1}{{\ding{212}}}\xspace}
+
+% suppress frame numbering, so noframenumbering works
+% \setbeamertemplate{frametitle continuation}
+%   \begin{frame}[containsverbatim,allowframebreaks,noframenumbering]
+
+\newenvironment{vframe}
+{
+  \begin{frame}[containsverbatim]
+}
+{
+ \end{frame}
+}
+
+\newenvironment{vbframe}
+{
+  \begin{frame}[containsverbatim,allowframebreaks]
+}
+{
+ \end{frame}
+}
+
+\newenvironment{blocki*}
+{
+  \begin{block}{}\begin{itemize}
+}
+{
+\end{itemize}\end{block}
+}
+
+\newenvironment{blocki}[1]
+{
+  \begin{block}{#1}\begin{itemize}
+}
+{
+\end{itemize}\end{block}
+}
+
+\newcommand{\oneliner}[1]{\begin{block}{}\begin{center}\begin{Large}#1\end{Large}\end{center}\end{block}}
+
+
+\renewcommand<>{\sout}[1]{
+  \only#2{\beameroriginal{\sout}{#1}}
+  \invisible#2{#1}
+}
+
+
+\AtBeginSection{\frame{\sectionpage}}
+
+\begin{document}
+% \usebackgroundtemplate{
+%   \begin{tikzpicture}
+%     \shade [inner color = white, outer color = gray!30, opacity = 0.8] (\paperwidth,\paperheight) rectangle (0,0);
+%     \shade [inner color = white, outer color = gray!10, opacity=.05] (\paperwidth/2,\paperheight/2) circle (3);
+%   \end{tikzpicture}
+% }
+
+<<opts,include=FALSE,cache=FALSE>>=
+library(knitr)
+library(BBmisc)
+library(mlr)
+library(ggplot2)
+library(parallelMap)
+library(tikzDevice)
+library(data.table)
+library(gridExtra)
+library(survMisc)
+options(width = 70)
+configureMlr(show.info = FALSE)
+configureMlr(show.learner.output = FALSE)
+OPENML_EVAL = TRUE
+
+knit_hooks$set(document = function(x) {
+  # silence xcolor
+  x = sub('\\usepackage[]{color}', '\\usepackage{xcolor}', x, fixed = TRUE)
+  # add an noindent after hooks -> remove blank line
+  x = gsub('(\\\\end\\{knitrout\\}[\n]+)', '\\1\\\\noindent ', x)
+  x
+})
+
+opts_chunk$set(
+   fig.path = "knitr/figures/",
+   cache.path = "knitr/cache/",
+   cache = TRUE,
+   tidy = FALSE,
+#   dev = 'tikz',
+   external = TRUE,
+   fig.align = "center",
+   size = "scriptsize",
+   stop = TRUE,
+   fig.width = 9 * 0.8,
+   fig.height = 6 * 0.8,
+   small.mar = TRUE,
+   prompt = TRUE
+)
+@
+
+%% PART I
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{vframe}{Welcome!}
+  \begin{itemize}
+    \item Project home page\\\url{https://github.com/mlr-org/mlr}
+      \begin{itemize}
+        \item R documentation rendered in HTML
+        \item Tutorial for online viewing / download, including many examples
+        \item Don't hesitate to interrupt me
+        \item There will be a coffee break (I hope?)
+        % \item Wiki page for this tutorial (slides, hands on solutions, \ldots)
+      \end{itemize}
+    \item 8-10 main developers, quite a few contributors, 3 GSOC projects in 2015
+    \item About 20K lines of code, 8K lines of unit tests
+    % \item If you do not have \pkg{mlr} installed yet, please do so (see wiki page)
+      % \item Same for \pkg{OpenML} (not on CRAN, you'll need \pkg{devools}):
+% <<openml-install,eval=FALSE>>=
+% install.packages("devtools")
+% devtools::install_github("openml/r")
+% @
+  \end{itemize}
+\end{vframe}
+
+\begin{vframe}{Overview}
+  \tableofcontents
+\end{vframe}
+
+\section{Introduction}
+
+\begin{vframe}
+  \begin{blocki}{What is (supervised) machine learning?}
+  \item Learning structure in data
+  \item The art of predicting stuff
+  \item Model optimization
+  \item Understanding of grey-box models
+  \end{blocki}
+
+  \begin{blocki}{Disclaimer}
+  \item The list is subjective and naively tailored to this talk
+  \item ML is based on math and statistics, we will (mainly) talk about structure, software, and practical issues here
+  \end{blocki}
+\end{vframe}
+
+
+
+\begin{vframe}{Supervised Classification tasks}
+<<classification-task-plot,echo=FALSE,fig.height=4>>=
+set.seed(1)
+df = data.frame(x = c(rnorm(10, mean = 3), rnorm(10, mean = 5)), y = runif(10), class = rep(c("a", "b"), each = 10))
+ggplot(df, aes(x = x, y = y, shape = class, color = class)) + geom_point(size = 3) + geom_vline(xintercept = 4, linetype = "longdash")
+@
+\structure{Goal}: Predict a class (or membership probabilities)
+\end{vframe}
+
+
+\begin{vframe}{Supervised Regression tasks}
+<<regression-task-plot,echo=FALSE,fig.height=4>>=
+set.seed(1)
+f = function(x) 0.5 * x^2 + x + sin(x)
+x = runif(40, min = -3, max = 3)
+y = f(x) + rnorm(40)
+df = data.frame(x = x, y = y)
+ggplot(df, aes(x, y)) + geom_point(size = 3) + stat_function(fun = f, color = "#FF9999", size = 2)
+@
+\structure{Goal}: Predict a continuous output
+\end{vframe}
+
+
+\begin{vframe}{Supervised Survival tasks}
+<<survial-task-plot,echo=FALSE,fig.height=4>>=
+set.seed(1)
+data("rats", package = "survival")
+sf = survfit(Surv(time, status) ~ rx, data = rats)
+survMisc:::autoplot.survfit(sf, title = "", xLab = "Time", yLab = "$\\hat{S}(t)$\n", survLineSize = 1.5)$plot
+@
+\structure{Goal}: Predict a survival function $\hat{S}(t)$, i.e.\ the probability to survive to time point~$t$
+\end{vframe}
+
+
+\begin{vframe}{Unsupervised Cluster tasks}
+<<cluster-task-plot,echo=FALSE,fig.height=4>>=
+df = iris
+m = as.matrix(cbind(df$Petal.Length, df$Petal.Width),ncol=2)
+cl = (kmeans(m,3))
+df$cluster = factor(cl$cluster)
+centers = as.data.frame(cl$centers)
+ggplot(data=df, aes(x=Petal.Length, y=Petal.Width, color=cluster )) +
+ geom_point() +
+ geom_point(data=centers, aes(x=V1,y=V2, color='Center')) +
+ geom_point(data=centers, aes(x=V1,y=V2, color='Center'), size=52, alpha=.3) +
+ theme(legend.position="none")
+@
+\structure{Goal}: Group data into similar clusters (or estimate fuzzy membership probabilities)
+\end{vframe}
+
+
+\section{Why mlr?}
+\begin{vframe}{Motivation}
+  \begin{blocki}{The good news}
+  \item CRAN serves hundreds of packages for machine learning (cf.\ CRAN task view machine learning)
+  \item Many packages are compliant to the unwritten interface definition:
+<<model-standard,eval=FALSE>>=
+model = fit(target ~ ., data = train.data, ...)
+predictions = predict(model, newdata = test.data, ...)
+@
+  \end{blocki}
+\end{vframe}
+
+\begin{vframe}{Motivation}
+  \begin{blocki}{The bad news}
+    \item Some packages do not support the formula interface or their API is \enquote{just different}
+    \item Functionality is always package or model-dependent, even though the procedure might be general
+    \item No meta-information available or buried in docs (sometimes not documented at all)
+    \item Many packages require the user to \enquote{guess} good hyperparameters
+    \item Larger experiments lead to lengthy, tedious and error-prone code
+  \end{blocki}
+  \oneliner{Our goal: A domain-specific language for many machine learning concepts!}
+\end{vframe}
+
+
+\begin{vframe}{Motivation: \pkg{mlr}}
+  \begin{itemize}
+    \item Unified interface for the basic building blocks: tasks, learners, resampling, hyperparameters, \ldots
+    \item Reflections: nearly all objects are queryable (i.e.\ you can ask them for their properties and program on them)
+    \item The OO-structure allows many generic algorithms:
+      \begin{itemize}
+        \item Bagging
+        \item Stacking
+        \item Feature Selection
+        \item \ldots
+      \end{itemize}
+    \item Easily extensible via S3
+      \begin{itemize}
+        \item Extension is not covered here, but explained in detail in the online tutorial
+        \item You do not need to understand S3 to use \pkg{mlr}
+        \item Wondering why we don't use S4? We care about code bloat and speed.
+      \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+% \begin{vframe}{Some remarks on style}
+%   \begin{blocki*}
+%   \item Function names are camel-case: doThatThing()
+%   \item Arguments and variables are lower-case, with dots: doThatThing(my.arg, another.one)
+%   \item We use \enquote{\code{=}} not \enquote{\code{<-}}
+%   \item We document in a pretty formal fashion, including type info
+%   \item We try to use \enquote{@family} to group functions in the docs
+%   \item We try to arg- and user-error-check in the most safe and informative way
+%   \end{blocki*}
+% \end{vframe}
+
+\section{Building Blocks}
+
+<<gatherSummary,include=FALSE>>=
+ee = as.environment("package:mlr")
+nl = table(sub("^makeRLearner\\.([[:alpha:]]+)\\..+", "\\1", methods("makeRLearner")))
+nm = sapply(list(classif = listMeasures("classif"), regr = listMeasures("regr"), surv = listMeasures("surv"), cluster = listMeasures("cluster")), length) - 4
+@
+
+\begin{frame}{Building Blocks}
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]{figure/ml_abstraction-crop.pdf}
+  \end{center}
+  \begin{itemize}
+    \item \pkg{mlr} objects: tasks, learners, measures, resampling instances.
+  \end{itemize}
+\end{frame}
+
+\begin{vframe}{Task Abstraction}
+  \begin{itemize}
+    \item Tasks encapsulate data and meta-information about it
+    \item Regression, classification, clustering, survival tasks
+    \item Data is stored inside an environment to save memory
+  \end{itemize}
+<<task1>>=
+task = makeClassifTask(data = iris, target = "Species")
+print(task)
+@
+\end{vframe}
+
+
+\begin{vbframe}{Task Abstraction: API}
+<<task2>>=
+getTaskId(task)
+str(getTaskData(task))
+@
+\framebreak
+<<task3>>=
+str(getTaskDescription(task))
+@
+\framebreak
+<<task4>>=
+getTaskSize(task)
+getTaskFeatureNames(task)
+getTaskTargetNames(task)
+getTaskFormula(task)
+summary(getTaskTargets(task))
+@
+\end{vbframe}
+
+
+\begin{vbframe}{Learner Abstraction}
+  \begin{itemize}
+    \item Internal structure of learners:
+      \begin{itemize}
+        \item wrappers around \code{fit()} and \code{predict()} of the package
+        \item description of the parameter set
+        \item annotations
+      \end{itemize}
+    \item Naming convention: \texttt{<tasktype>.<functionname>}
+<<naming-convention,eval=FALSE>>=
+makeLearner("classif.rpart")
+makeLearner("regr.rpart")
+@
+    % \item For the lazy: Instead of creating the object, you can also pass a string to nearly
+    %   every function that takes a learner
+    % \item Reduction algorithms for cost-sensitive classification
+    \item Adding custom learners is covered in the tutorial
+  \end{itemize}
+\framebreak
+<<learner1>>=
+lrn = makeLearner("classif.rpart")
+print(lrn)
+@
+\end{vbframe}
+
+\begin{vbframe}{What Learners are available?}
+  \begin{scriptsize}
+  \begin{columns}
+    \column{0.5\textwidth}
+    \begin{blocki}{Classification (\Sexpr{nl["classif"]})}
+        \item LDA, QDA, RDA, MDA
+        \item Trees and forests
+        \item Boosting (different variants)
+        \item SVMs (different variants)
+        \item \ldots
+    \end{blocki}
+    \begin{blocki}{Clustering (\Sexpr{nl["cluster"]})}
+        \item K-Means
+        \item EM
+        \item DBscan
+        \item X-Means
+        \item \ldots
+    \end{blocki}
+    \column{0.4\textwidth}
+    \begin{blocki}{Regression (\Sexpr{nl["regr"]})}
+        \item Linear, lasso and ridge
+        \item Boosting
+        \item Trees and forests
+        \item Gaussian processes
+        \item \ldots
+    \end{blocki}
+    \begin{blocki}{Survival (\Sexpr{nl["surv"]})}
+        \item Cox-PH
+        \item Cox-Boost
+        \item Random survival forest
+        \item Penalized regression
+        \item \ldots
+    \end{blocki}
+  \end{columns}
+  \end{scriptsize}
+\framebreak
+\oneliner{We can explore them on the webpage -- or ask \pkg{mlr}}
+
+<<listlrns1>>=
+# list all classification learners which can predict probabilities
+# and allow multiclass classification
+listLearners("classif", 
+  properties = c("prob", "multiclass"))[1:5, c(-2, -5, -16)]
+@
+
+\framebreak
+
+\oneliner{Get all applicable learners for a task}
+<<listlrns2>>=
+listLearners(task)[1:5, c(-2, -5, -16)]
+@
+
+\end{vbframe}
+
+\begin{vframe}{Parameter Abstraction}
+  \begin{itemize}
+    \item Extensive meta-information for hyperparameters available:\\
+      storage type, constraints, defaults, dependencies
+    \item Automatically checked for feasibility
+    \item You can program on parameters!
+    \end{itemize}
+<<parmset>>=
+getParamSet(lrn)
+@
+\end{vframe}
+
+\begin{vframe}{Learner Abstraction: API}
+<<learner2>>=
+lrn$properties
+getHyperPars(lrn)
+lrn = setHyperPars(lrn, cp = 0.3)
+lrn = setPredictType(lrn, "prob")
+lrn = setPredictThreshold(lrn, 0.7);
+@
+\end{vframe}
+
+
+\begin{vframe}{Performance Measures}
+  \begin{itemize}
+    \item Performance measures evaluate the predictions a test set and aggregate them over multiple in resampling iterations
+    \item \Sexpr{nm["classif"]}~classification, \Sexpr{nm["regr"]}~regression,  \Sexpr{nm["cluster"]}~cluster, \Sexpr{nm["surv"]}~survival
+    \item Internally: performance function, default aggregation function and annotations
+    \item Adding custom measures is covered in the tutorial
+\end{itemize}
+<<measure>>=
+print(mmce)
+@
+\end{vframe}
+
+\begin{vframe}{What measures are available?}
+  \oneliner{We can explore them on the webpage -- or ask \pkg{mlr}}
+<<measure2>>=
+listMeasures("classif")
+listMeasures(task)
+@
+\end{vframe}
+
+\begin{vframe}{R Example}
+  \oneliner{Training and prediction}
+\end{vframe}
+
+\begin{vbframe}{Resampling Abstraction}
+  \begin{itemize}
+    \item Procedure: Train, Predict, Eval, Repeat.
+    \item Aim: Estimate expected model performance.
+      \begin{itemize}
+        \item Hold-Out
+        \item Cross-validation (normal, repeated)
+        \item Bootstrap (OOB, B632, B632+)
+        \item Subsampling
+        \item Stratification
+        \item Blocking
+      \end{itemize}
+    \item Instantiate it or not (= create data split indices)
+  \end{itemize}
+
+<<resample1>>=
+rdesc = makeResampleDesc("CV", iters = 3)
+rin = makeResampleInstance(rdesc, task = task)
+str(rin$train.inds)
+@
+  \framebreak
+  \begin{blocki}{Resampling a learner}
+    \item Measures on test (or train) sets
+    \item Returns aggregated values, predictions and some useful extra information
+<<resample2>>=
+lrn = makeLearner("classif.rpart")
+rdesc = makeResampleDesc("CV", iters = 3)
+measures = list(mmce, timetrain)
+r = resample(lrn, task, rdesc, measures = measures)
+@
+\item For the lazy
+<<resample3, eval = FALSE>>=
+r = crossval(lrn, task, iters = 3, measures = measures)
+@
+  \end{blocki}
+\framebreak
+<<resample2b>>=
+print(r)
+@
+\framebreak
+<<resample4>>=
+names(r)
+r$measures.test
+r$aggr
+@
+\framebreak
+<<resample5>>=
+head(as.data.frame(r$pred))
+@
+\end{vbframe}
+
+\begin{vframe}{Configuring the Package}
+
+\begin{blocki*}
+  \item What to do when training fails? error, warn, or be quiet?\\
+    \tarrow You don't want to stop in complex loops like \code{benchmark}\\
+    \tarrow \code{FailureModel} is created that predicts NAs
+  \item Show verbose info messages?
+  \item What if parameters are not described in learner?
+  \item \code{?configureMlr} sets global flags and can be overwritten for individual learners
+\end{blocki*}
+\end{vframe}
+
+
+%% PART II
+% \section{Part2} %----------------------------------------------------------------------------------
+
+\section{Benchmarking and Model Comparison} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Benchmarking and Model Comparison}
+  \begin{blocki}{Benchmarking}
+    \item Comparison of multiple models on multiple data sets
+    \item Aim: Find best learners for a data set or domain, learn about learner characteristics, \ldots
+  \end{blocki}
+  \framebreak
+  \begin{blocki}{Benchmarking in \pkg{mlr}}
+    \item Train and test sets are synchronized, i.e.\ all learners see the same data splits
+    \item Can be done in parallel (see later)
+    \item Can be combined with feature selection / tuning / nested resampling (see later)
+    \item Results stored in well-defined container object, with getters and converters
+    \item We are working on standard analysis tools % FIXME was heißt das?
+  \end{blocki}
+
+  \framebreak
+
+<<benchmark1, eval=TRUE>>=
+library(mlr)
+# lets try a couple of methods on some (mlr example) tasks
+
+# these are predefined in mlr for toying around:
+tasks = list(iris.task, sonar.task)
+
+learners = list(
+  makeLearner("classif.rpart"),
+  makeLearner("classif.randomForest", ntree = 500),
+  makeLearner("classif.svm")
+)
+
+rdesc = makeResampleDesc("CV", iters = 3)
+set.seed(1)
+br = benchmark(learners, tasks, rdesc)
+@
+
+\framebreak
+
+<<benchmark0, eval=FALSE>>=
+plotBenchmarkResult(br)
+@
+\includegraphics[width=0.9\textwidth]{figure/bmr_boxplots.pdf}
+
+\framebreak
+
+<<benchmark2 , eval=TRUE>>=
+getBMRAggrPerformances(br, as.df = TRUE)
+@
+
+\framebreak
+
+%FIXME: was ist die id spalte?
+<<benchmark2b , eval=TRUE>>=
+getBMRPerformances(br, as.df = TRUE)
+@
+
+\framebreak
+
+<<benchmark3 , eval=TRUE>>=
+head(getBMRPredictions(br, as.df = TRUE), 10)
+@
+\end{vbframe}
+
+\section{Hyperparameter Tuning} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Hyperparameter Tuning}
+  \begin{blocki}{Tuning}
+  \item Used to find \enquote{best} hyperparameters for a method in a data-dependent way
+  \item Essential for some methods, e.g.\ SVMs
+  \end{blocki}
+
+  \begin{blocki}{Tuning in \pkg{mlr}}
+  \item General procedure: Tuner proposes param point, eval by resampling, feedback value to tuner
+  \item Multiple tuners through exactly the same interface
+  \item All evals and more info is logged into \code{OptPath} object
+  \end{blocki}
+
+  \framebreak
+
+  \begin{blocki}{Grid search}
+  \item Basic method: Exhaustively try all combinations of finite grid
+  \item Inefficient, combinatorial explosion
+  \item Searches large, irrelevant areas
+  \item Reasonable for continuous parameters?
+  \item Still often default method
+  \end{blocki}
+
+  \begin{blocki}{Random search}
+  \item Randomly draw parameters
+  \item \pkg{mlr} supports all types and dependencies
+  \item Scales better then grid search, easily extensible
+  \end{blocki}
+\end{vbframe}
+
+
+\begin{vframe}{R Example}
+  \oneliner{Tuning}
+\end{vframe}
+
+
+\begin{vframe}{Automatic Model Selection}
+  \begin{blocki}{Prior approaches:}
+  \item Looking for the silver bullet model \\
+    $\leadsto$ Failure\\
+  \item Exhaustive benchmarking / search \\
+    $\leadsto$ Per data set: too expensive \\
+    $\leadsto$ Over many: contradicting results
+  \item Meta-Learning:\\
+    $\leadsto$ Failure \\
+    $\leadsto$ Usually not for preprocessing / hyperparamters
+  \end{blocki}
+
+  \structure{Goal}: Data dependent + Automatic + Efficient
+\end{vframe}
+
+\begin{frame}{Black-Box-Perspective in Configuration}
+  \includegraphics<1>[width=10cm]{figure/bbox1.png}
+  \includegraphics<2>[width=10cm]{figure/bbox2.png}
+  \includegraphics<3>[width=10cm]{figure/bbox3.png}
+  \includegraphics<4>[width=10cm]{figure/bbox4.png}
+  \includegraphics<5>[width=10cm]{figure/bbox5.png}
+\end{frame}
+
+\begin{frame}{Adaptive tuning}
+  \begin{center}
+    \includegraphics[width=0.85\textwidth]{figure/ml_abstraction_optimization-crop.pdf}
+  \end{center}
+\end{frame}
+
+\begin{vframe}{General Algorithm Configuration}
+\begin{itemize}
+  \item Assume a (parametrized) algorithm $a$
+  \item Parameter space  $\theta \in \Theta$\\
+        might be discrete and dependent / hierarchical
+  \item Stochastic generating process for instances $i \sim P$, where we draw i.i.d. from.
+        % (Usually predefined set of instances, and i.i.d.-ness somewhat violated)
+  \item Run algorithm $a$ on $i$ and measure performance $f(i, \theta) = run(i, a(\theta))$
+  \item Objective: $\min_{\theta \in \Theta} E_P[f(i, \theta)]$
+  \item No derivative for $f(\cdot, \theta)$, black-box
+  \item $f$ is stochastic / noisy
+  \item $f$ is likely expensive to evaluate
+  \item Consequence: very hard problem
+\end{itemize}
+$\leadsto$ \structure{Racing or model-based / bayesian optimization}
+% \item VERY poopular nowadays to configure, e.g., discrete solvers for NP-hard problems
+\end{vframe}
+
+
+\begin{frame}{Idea of (F-)Racing}
+  \begin{columns}
+    \begin{column}{.35\textwidth}
+      \begin{tikzpicture}[scale=0.18]
+        \input{race-styles}
+        \input{race}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{.65\textwidth}
+          \begin{itemize}
+          \item Write down all candidate solutions
+          \item Iterate the following till budget exhausted
+          \item One \enquote{generation}
+          \begin{itemize}
+            \item Evaluate all candidates on an instance, and another, \ldots
+            \item After some time, compare candidates via statistical test,
+            e.g., Friedman test with post-hoc analysis for pairs
+            \item Remove outperformed candidates
+          \end{itemize}
+          \item Output: Remaining candidates
+          \item Yes, the testing completely ignores \enquote{sequentiality} and is somewhat heuristic.
+          %But we would only care about this if it would influence optimization efficiency...
+          \end{itemize}
+        \bigskip
+      \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{vframe}{Idea of Iterated F-Racing}
+  \begin{blocki}{What might be problematic?}
+  \item We might have many or an infinite number of candidates
+  \end{blocki}
+
+  \begin{blocki}{Iterated racing}
+  \item Have a stochastic model to draw candidates from in every generation
+  \item For each parameter: Univariate, independent distribution (factorized joint distribution)
+  \item Sample distributions centered at \enquote{elite} candidates from previous generation(s)
+  \item Reduce distributions' width / variance in later generations for convergence
+  \end{blocki}
+\end{vframe}
+
+
+\begin{vframe}{Idea of Iterated F-Racing}
+\begin{blocki}{Whats good about this}
+\item Very simple and generic algorithm
+\item Can easily be parallelized
+\item A nice R package exists: \pkg{irace}\footnote{Lopez-Ibanez et al, \enquote{The irace package, Iterated Race for Automatic Algorithm Configuration. Technical Report TR/IRIDIA/2011-004, IRIDIA, Université libre de Bruxelles, Belgium, 2011.}}\\
+      % We \enquote{hacked} irace little bit,
+      % so evals can be parallelized with our \pkg{BatchJobs} R package
+      % on virtually any HPC cluster
+\end{blocki}
+
+\begin{blocki}{What might be not so good}
+\item  Quite strong (wrong?) assumptions in the probability model
+\item  Sequential model-based optimization is probably more efficient
+      (But be careful: Somewhat my personal experience and bias,\\
+      as not so many large scale comparisons exist)
+\end{blocki}
+\end{vframe}
+
+
+\section{Feature Selection} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Feature Selection}
+  \begin{itemize}
+    \item Reduce dimensionality, increase interpretability and predictive performance
+    \item Concepts:
+      \begin{description}
+        \item[Filter:] Preliminary step, independent from model
+        \item[Wrapper:] Wrapped around model fit which is iteratively scored
+        \item[Embedded:] Model has feature selection embedded, e.g.\ lasso regression
+      \end{description}
+  \end{itemize}
+  \oneliner{mlr supports all of these, but we do not have enough time today for details.}
+  % \framebreak
+% \begin{blocki}{Feature Filters}
+  %   \item Usually: Quickly compute a numerical score per feature
+  %   \item Encodes influence of feature on output
+  %   \item Often independent of ML model
+  %   \item Often fast to compute
+  %   \item Can be used to visualize data structure
+  %   \item Can be used to rank or threshold the feature set, and to reduce feature set size
+  %   \item Terrible if complex correlations exist
+% \end{blocki}
+
+% \framebreak
+
+% \begin{blocki}{Filter examples}
+  % \item Correlation between $x_i$ and $y$ in regression
+  % \item Mutual information in classification
+  % \item The random forest importance value
+  % \item $\chi^2$-statistic for independence between $x_i$ and $y$
+% \end{blocki}
+
+% \framebreak
+
+% <<filter, eval=TRUE>>=
+% fv = generateFilterValuesData(iris.task, method = "information.gain")
+% print(fv)
+% task2 = filterFeatures(iris.task, fval = fv, perc = 0.5)
+% print(getTaskFeatureNames(task2))
+% @
+
+% You can optimize this selection threshold jointly with the model!
+% \framebreak
+% <<filter-plot,fig.height=4.5>>=
+% plotFilterValues(fv)
+% @
+
+% \framebreak
+
+% \begin{blocki}{Wrapper approach}
+  % \item Evaluate feature sets with learner, e.g.\ by cross-validation
+  % \item Measures probably what you are interested in
+  % \item Will be slow in very high-dimensional spaces
+  % \item Sequential Forward Search (SFS) (or backward)
+  % \item Sequential Floating Forward Search (SFFS)
+  % \item Genetic Algorithm (GA)
+% \end{blocki}
+
+% \begin{center}
+  % \includegraphics[width=0.9\textwidth]{figure/varsel_space.png}
+% \end{center}
+% \framebreak
+
+% \framebreak
+
+% <<fswrapper1, eval=TRUE>>=
+% ## Specify the search strategy
+% ctrl = makeFeatSelControlSequential(method = "sfs", alpha = 0.05)
+
+% ## Select features
+% rdesc = makeResampleDesc("CV", iters = 10)
+% sfeats = selectFeatures(learner = "regr.lm", task = bh.task,
+%   resampling = rdesc, control = ctrl, show.info = FALSE)
+% sfeats
+% @
+
+% \framebreak
+
+% <<fswrapper2, eval=TRUE,size="tiny">>=
+% analyzeFeatSelResult(sfeats)
+% @
+\end{vbframe}
+
+\section{mlr Learner Wrappers} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{\pkg{mlr} Learner Wrappers}
+
+  \begin{blocki}{What?}
+    \item Extend the functionality of learners by adding an \pkg{mlr} wrapper to them
+    \item The wrapper hooks into the train and predict of the base learner and extends it
+    \item This way, you can create a new \pkg{mlr} learner with extended functionality
+    \item Hyperparameter definition spaces get joined!
+  \end{blocki}
+
+  \framebreak
+
+  \begin{blocki}{Available Wrappers}
+    \item \structure{Preprocessing}: PCA, normalization (z-transformation)
+    \item \structure{Parameter Tuning}: grid, optim, random search, genetic algorithms, CMAES, iRace, MBO
+    \item \structure{Filter}: correlation- and entropy-based, $\mathcal{X}^2$-test, mRMR, \ldots
+    \item \structure{Feature Selection}: (floating) sequential forward/backward, exhaustive search, genetic algorithms, \ldots
+    \item \structure{Impute}: dummy variables, imputations with mean, median, min, max, empirical distribution or other learners
+    \item \structure{Bagging} to fuse learners on bootstraped samples
+    \item \structure{Stacking} to combine models in heterogenous ensembles
+    \item \structure{Over- and Undersampling} for unbalanced classification
+  \end{blocki}
+\end{vbframe}
+
+\begin{vframe}{Nested Resampling}
+  \begin{itemize}
+    \item Using the TuningWrapper or FeatureSelectionWrapper allows to enable nested resampling
+    \item Ensures \textbf{unbiased} results for model optimization
+    \item Everything else is statistically unsound
+  \end{itemize}
+
+  \begin{center}
+    \includegraphics[width=8cm]{figure/nested.png}
+  \end{center}
+\end{vframe}
+
+
+\begin{vframe}{R Example}
+  \oneliner{Complex tuning example}
+\end{vframe}
+
+
+\section{Parallelization}
+
+\begin{vbframe}{Parallelization} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \begin{itemize}
+    \item We use our own package: \pkg{parallelMap}
+    \item Initialize a backend with \texttt{parallelStart}
+    \item Stop with \texttt{parallelStop}
+<<parallelMap,eval=FALSE>>=
+parallelStart("multicore")
+benchmark(...)
+parallelStop()
+@
+    \item Backends: \texttt{local}, \texttt{multicore}, \texttt{socket}, \texttt{mpi} and \texttt{BatchJobs}
+    \item The latter means support for: makeshift SSH-clusters and HPC schedulers like SLURM, Torque/PBS, SGE or LSF
+    \item The first loop which is marked as parallel executable will be automatically parallelized
+  \end{itemize}
+
+  \framebreak
+
+  \begin{blocki}{Parallelization levels}
+  \item Which loop to parallelize depends on number of iterations
+  \item Levels allow fine grained control over the parallelization
+    \begin{itemize}
+  \item \code{mlr.resample}: Each resampling iteration (a train / test step) is a parallel job.
+  \item \code{mlr.benchmark}: Each experiment \enquote{run this learner on this data set} is a parallel job.
+  \item \code{mlr.tuneParams}: Each evaluation in hyperparameter space \enquote{resample with these parameter settings} is a parallel job. How many of these can be run independently in parallel depends on the tuning algorithm.
+  \item \code{mlr.selectFeatures}: Each evaluation in feature space \enquote{resample with this feature subset} is a parallel job.
+    \end{itemize}
+  \end{blocki}
+
+\framebreak
+
+<<parallel-level-example, eval=TRUE>>=
+lrns = list(makeLearner("classif.rpart"), makeLearner("classif.svm"))
+rdesc = makeResampleDesc("Bootstrap", iters = 100)
+
+parallelStart("multicore", 8)
+benchmark(learners = lrns, tasks = iris.task, resamplings = rdesc)
+parallelStop()
+@
+
+\framebreak
+
+Parallelize the bootstrap instead:
+<<parallel-level-example-fixed, eval=TRUE>>=
+parallelStart("multicore", 8, level = "mlr.resample")
+benchmark(learners = lrns, tasks = iris.task, resamplings = rdesc)
+parallelStop()
+@
+\end{vbframe}
+
+
+% \section{Part3} %----------------------------------------------------------------------------------
+\section{Visualizations}
+
+\begin{vframe}{Visualizations}
+  \begin{itemize}
+    % \item A brief time ago, \pkg{mlr} was pretty bare-bones here
+    \item We use \pkg{ggplot2} and interactive \pkg{ggvis} as a standard, if possible
+    \item Some plots use Viper Charts as backend (cost curves, lift charts, \ldots)
+    \item GSOC project 2015 with Zach Jones
+    \begin{itemize}
+      \item Demo plots for models in teaching
+      \item ROC curves
+      \item Threshold vs. Performance
+      \item Partial dependency plot
+      \item Learning curves
+    \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+\begin{vframe}{R Example}
+  \oneliner{Visualizations}
+\end{vframe}
+
+% \section{caret vs. \pkg{mlr}}
+
+% \begin{vbframe}{caret vs. mlr}
+
+
+% % \oneliner{Of course we are biased :)}
+
+% % \begin{blocki}{Why is caret great}
+% % \item caret is an overall great package
+% % \item caret has much better visibility
+% %   (This sucks. We will work hard on changing this)
+% % \item caret has a book (I guess we won't -- soon)
+% % \item caret has a few more regression and classification learners
+% % \item caret has (rudimentary) support for time-series data\\
+% %   (\pkg{mlr} will have that soon)
+% % \end{blocki}
+% % \framebreak
+
+% \begin{blocki}{Why we like \pkg{mlr} more}
+% % \item \pkg{mlr} is under active development by a substantial number of people: 6 core developers, several other packages with lots of interoperability, and 3 GSOC 2015 developers
+% \item \pkg{mlr} has (in our opinion) a better OO design, class structure and infrastructure for future development and for users
+% \item This makes things combinable, extensible, predictable
+% \item More flexible parallelization with \pkg{parallelMap}, even on HPCs via \pkg{BatchJobs}
+% \item Tuning with advanced methods like \pkg{irace}
+% \item  Fusing learners with other operations like pre-processing and feature selection
+% % \item \pkg{mlr} has better infrastructure for training, evaluating, tuning, benchmarking, and visualizing learning algorithms
+% % \item \pkg{mlr} has (vastly) better unit tests (which means it is more reliable!).
+% % \item \pkg{mlr} has better software documentation
+% % \item \pkg{mlr} has a consistent style
+% \item Nested resampling (required for unbiased results)
+% \item Survival and cluster analysis
+% % \item \textbf{With more visibility, funding, and contributors it could be even more awesome}
+% \end{blocki}
+
+% % \framebreak
+
+% % \begin{blocki}{What \pkg{mlr} can do, but caret cannot}
+% % \item Blocking in resampling
+% % \item Integrated stacking (a new separate package for caret, \pkg{caretEnsemble})
+% % \item Partial predictions/dependence for any supervised method
+% % \item Cost-sensitive learning
+% % \end{blocki}
+% \end{vbframe}
+
+
+\section{OpenML} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{OpenML-R-Package}
+  \oneliner{Caution: Work in progress}
+
+  \begin{blocki}{OpenML?}
+  \item Main idea: Make ML experiments reproducible and most parts computer-readable
+  \item Share everything
+  \item Enrich with meta-information
+  \item Later: Mine the results, meta-learn on it
+  \end{blocki}
+\end{vbframe}
+
+\begin{frame}
+  \includegraphics[page=12,width=0.95\textwidth]{figure/oml-talk.pdf}
+\end{frame}
+\begin{frame}
+  \includegraphics[page=13,width=0.95\textwidth]{figure/oml-talk.pdf}
+\end{frame}
+\begin{frame}
+  \includegraphics[page=14,width=0.95\textwidth]{figure/oml-talk.pdf}
+\end{frame}
+\begin{frame}
+  \includegraphics[page=15,width=0.95\textwidth]{figure/oml-talk.pdf}
+\end{frame}
+
+\begin{vbframe}{OpenML-R-Package}
+  \oneliner{Let's visit website and project page}
+  \framebreak
+  \oneliner{\url{https://github.com/openml/r}}
+  \begin{blocki}{Current API in R}
+    \item Explore data and tasks
+    \item Download data and tasks
+    \item Register learners
+    \item Upload runs
+    \item Explore your own and other people's results
+  \end{blocki}
+
+  \begin{center}
+  Already nicely connected to \pkg{mlr}!
+  \end{center}
+\end{vbframe}
+
+\begin{vbframe}{OpenML: Explore and Select Data}
+<<openml1, eval=OPENML_EVAL>>=
+library(OpenML)
+listOMLDataSets()[1:3, 1:9]
+@
+\framebreak
+<<openml1b, eval=OPENML_EVAL>>=
+listOMLTasks()[1:3, c(1:5, 10:11)]
+@
+\end{vbframe}
+
+\begin{vframe}{OpenML: Download a Data Set}
+<<openml2, eval=OPENML_EVAL>>=
+# uses built in caching from disk
+getOMLDataSet(6)
+@
+\end{vframe}
+
+\begin{vbframe}{OpenML: Download a Task}
+<<openml3, eval=OPENML_EVAL>>=
+# uses built in caching from disk
+oml.task = getOMLTask(1)
+@
+\framebreak
+<<openml3b, eval=OPENML_EVAL>>=
+print(oml.task)
+@
+\end{vbframe}
+
+\begin{vframe}{OpenML: Run a Task}
+<<openml4, eval=OPENML_EVAL,size="tiny">>=
+lrn = makeLearner("classif.rpart")
+res = runTaskMlr(oml.task, lrn)
+@
+\end{vframe}
+
+\begin{vframe}{OpenML: Upload Learner and Predictions}
+<<openml5, eval=FALSE>>=
+impl = createOpenMLImplementationForMlrLearner(lrn)
+uploadOpenMLImplementation(impl, session.hash = hash)
+uploadOpenMLRun(oml.task, lrn, impl, pred, hash)
+@
+\end{vframe}
+
+\begin{frame}
+  \includegraphics[page=41,width=0.95\textwidth]{figure/oml-talk.pdf}
+\end{frame}
+
+\section{The End}
+\begin{vframe}{There is more \ldots}
+  \begin{blocki*}
+  \item Regular cost-sensitive learning (class-specific costs)
+  \item Cost-sensitive learning (example-dependent costs)
+  \item Multi-Label learning
+  \item Model-based optimization
+  \item Multi-criteria optimization
+  \item OpenML
+  \item \ldots
+  \end{blocki*}
+\end{vframe}
+
+\begin{vframe}{Outlook}
+  \begin{blocki}{We are working on}
+  \item Even better tuning system
+  \item More interactive plots
+  \item Large-Scale SVM ensembles
+  \item Time-Series tasks
+  \item Better benchmark analysis
+  \item \ldots
+  \end{blocki}
+\end{vframe}
+
+\begin{vframe}
+  \oneliner{Thanks!}
+\end{vframe}
+
+\end{document}
+% vim: set spelllang=en :

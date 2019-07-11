@@ -1,0 +1,48 @@
+%% Place all kinds of abbreaviations here
+\usepackage{amsmath, amsfonts}
+\usepackage{mathtools}
+\usepackage{xspace}
+
+% general math stuff
+\newcommand{\R}{\ensuremath{\mathbb{R}}}                   % reals
+\newcommand{\N}{\ensuremath{\mathbb{N}}}                   % naturals
+\DeclareMathOperator*{\argmin}{arg\,min}                   % argmin
+\DeclareMathOperator*{\argmax}{arg\,max}                   % argmax
+\DeclareMathOperator*{\Inf}{Inf}                           % Generic Infill Crit
+\newcommand{\EI}{\ensuremath{\operatorname{EI}}\xspace}    % EI Infill
+\newcommand{\CB}{\ensuremath{\operatorname{CB}}\xspace}    % CB Infill
+
+\newcommand{\X}{\ensuremath{\mathcal{X}}\xspace}           % domain / search space
+\newcommand{\Y}{\ensuremath{\mathbb{Y}}\xspace}            % codomain / target space
+\newcommand{\xv}{\ensuremath{\boldsymbol{x}}\xspace}       % observed x vector
+\newcommand{\yv}{\ensuremath{\boldsymbol{y}}\xspace}       % observed y vector
+\newcommand{\fh}{\ensuremath{\hat{f}}\xspace}              % surrogate model
+\newcommand{\fx}{\ensuremath{f(\xv)}\xspace}               % bbox function
+\newcommand{\sh}{\ensuremath{\hat{s}}\xspace}              % local estimated uncertainty
+\newcommand{\shx}{\ensuremath{\sh(\xv)}\xspace}            % local estimated uncertainty at point x
+\newcommand{\vhx}{\ensuremath{\sh^2(\xv)}\xspace}          % local estimated variance at point x
+\newcommand{\mh}{\ensuremath{\hat{\mu}}\xspace}            % local estimated mean
+\newcommand{\mhx}{\ensuremath{\mh(\xv)}\xspace}            % local estimated mean at point x
+\newcommand{\sde}{\ensuremath{\sigma_{\epsilon}}\xspace}   % standard deviation from error term
+\newcommand{\kpv}{\ensuremath{\phi}\xspace}                % Kernel Parameters for Kriging
+\newcommand{\va}{\ensuremath{\operatorname{Var}}\xspace}         % simple Variance
+\newcommand{\D}{\ensuremath{\mathcal{D}}\xspace}           % \D_0: initial Design. \D_1: xs after one iter
+
+
+
+\newcommand{\Rlang}{\texttt{R}\xspace}                     % R for the R language
+\newcommand{\mlrMBO}{\textbf{\texttt{mlrMBO}}\xspace}      % mlrMBO Package
+\newcommand{\mlr}{\textbf{\texttt{mlr}}\xspace}            % mlr Package
+\newcommand{\pkg}[1]{\texttt{#1}\xspace}                   % \pkg{...} for mentioning other packages
+\newcommand{\MBO}{model-based optimization\xspace}         % shortcut for model-based optimization
+\newcommand{\ie}{i.e.\xspace}                             % shortcut for ie
+\newcommand{\eg}{e.g.\xspace}                             % shortcut for eg
+\newcommand{\code}[1]{\texttt{#1}}
+
+% beamer symbols
+\newcommand{\nextpage}{$\boldsymbol \hookrightarrow$}
+
+\usepackage{pifont}% http://ctan.org/pkg/pifont
+\newcommand{\cmark}{\ding{51}}                             % checkmark
+\newcommand{\xmark}{\ding{55}}                             % cross
+\newcommand{\light}[1]{\textcolor{gray}{#1}}               % Light textcolor

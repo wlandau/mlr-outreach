@@ -1,0 +1,721 @@
+\documentclass[10pt]{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{csquotes}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{xspace}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{wasysym}
+
+\usepackage{tikz}
+  \usetikzlibrary{shapes,arrows,snakes}
+  \usetikzlibrary{decorations.pathmorphing} 
+  \usetikzlibrary{fit,calc}                 
+  \usetikzlibrary{backgrounds}                
+
+\usefonttheme{serif}
+\usecolortheme{whale}
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+\newcolumntype{C}[1]{>{\centering\arraybackslash$}m{#1}<{$}}
+\newcommand\undermat[2]{\makebox[0pt][l]{$\smash{\underbrace{\phantom{\begin{matrix}#2\end{matrix}}}_{\text{$#1$}}}$}#2}
+\definecolor{checkgreen}{HTML}{18A126}
+\definecolor{errorred}{HTML}{FF0000}
+
+\newcommand{\mlr}{\texttt{mlr}\xspace}
+\newcommand{\eg}{e.\,g.\xspace}
+\newcommand{\ie}{i.\,e.\xspace}
+\newcommand{\cf}{cf.\xspace}
+
+\title[mlr]{Introduction to Machine Learning and Efficient Hyper-Parameter Tuning with mlr in R}
+\author{Bernd Bischl}
+\date{}
+
+\input{cmd}
+
+\begin{document}
+
+<<setup, include=FALSE>>=
+library(knitr)
+library(BBmisc)
+library(parallel)
+library(parallelMap)
+library(mlr)
+library(irace)
+library(rpart)
+library(e1071)
+library(BatchJobs)
+library(kernlab)
+library(ggplot2)
+library(randomForest)
+library(OpenML)
+options(width=56)
+set.seed(1111)
+opts_chunk$set(size = 'footnotesize',
+               cache = TRUE,
+               fig.width=9 * 0.8,
+               fig.height=6 * 0.8,
+               fig.align="center",
+               out.width='.95\\textwidth')
+configureMlr(show.learner.output = FALSE, show.info = FALSE, on.learner.warning = "quiet")
+options(parallelMap.default.show.info = FALSE)
+knit_hooks$set(crop=hook_pdfcrop)
+@
+
+\begin{frame}
+  \titlepage
+  \begin{center}
+    Joint work: 
+    \begin{itemize}
+      \item Michel Lang (Dortmund, mlr, OpenML)
+      \item Jakob Richter (Dortmund, mlr)
+      \item Lars Kotthoff (Cork, mlr)
+      \item Dominik Kirchhoff (Dortmund, OpenML)
+      \item Julia Schiffner (Duesseldorf, mlr)
+      \item Eric Studerus (Basel, mlr)
+      \item Luis Torgo (Porto, OpenML)
+    \end{itemize}
+
+  \end{center}
+\end{frame}
+
+\begin{frame}{R?}
+  \begin{itemize}
+  \item The lingua franca of statistical computing (and data science?)
+  \item Free and open source
+  \item KDNuggets: Still Nr.1 in\\
+    \textit{Top Languages for analytics, data mining, data science}
+  \item Packages: ca. 6K on CRAN, ca. 1K on BioConductor
+  \item Rapid prototyping + interfacing
+  \item You can be reasonably fast and work on large data if you know what you are doing 
+  \item I have authored or co-developed about 15 (?) packages now over the last 5 years
+\end{itemize}
+\end{frame}
+
+\begin{frame}{mlr?}
+  \begin{center}
+    \texttt{mlr 2.3}:
+    \url{https://github.com/berndbischl/mlr}\\
+    (also on CRAN)
+  \end{center}
+  
+  \begin{itemize}
+  \item Machine learning experiments are well structured 
+  \item Definition by plugging operators together (e.g., Weka or RapidMiner):
+    \includegraphics[width=0.9\textwidth]{figure/rapidminer.png}
+  \item No unified interface for machine learning in R!
+  \item Experiments require lengthy, tedious and error-prone code
+\end{itemize}
+\begin{center}
+  \structure{mlr: abstractions, glue code and some own implementations\\
+  Goal: \textbf{Get a DSL for ML!}}
+\end{center}
+\end{frame}
+
+<<gatherSummary,include=FALSE>>=
+ee = as.environment("package:mlr")
+nl = table(sub("^makeRLearner\\.([[:alpha:]]+)\\..+", "\\1", methods("makeRLearner")))
+nm = sapply(list(classif = listMeasures("classif"), regr = listMeasures("regr"), surv = listMeasures("surv"), cluster = listMeasures("cluster")), length) - 4
+@
+
+\begin{frame}[containsverbatim]{Task Abstractions}
+  \begin{itemize}
+    \item Regression, (cos-sens.) classification, clustering, survival tasks
+    \item Internally: data frame with annotations: target column(s), weights, misclassification costs, \ldots)
+  \end{itemize}
+<<task>>=
+task = makeClassifTask(data = iris, target = "Species")
+print(task)
+@
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+  \begin{itemize}
+    \item \Sexpr{nl["classif"]}~classification, \Sexpr{nl["cluster"]}~clustering, \Sexpr{nl["regr"]}~regression, \Sexpr{nl["surv"]}~survival
+    \item Reduction algorithms for cost-sensitive
+    \item Internally: functions to train and predict, parameter set and annotations 
+  \end{itemize}
+<<learner>>=
+lrn = makeLearner("classif.rpart")
+print(lrn)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+<<parmset>>=
+getParamSet(lrn)
+@
+
+\end{frame}
+
+\begin{frame}[containsverbatim]{Performance Measures}
+\begin{itemize}
+  \item \Sexpr{nm["classif"]}~classification, \Sexpr{nm["regr"]}~regression, \Sexpr{nm["surv"]}~survival, \Sexpr{nm["cluster"]}~clustering, 4 general
+  \item Internally: performance function, aggregation function and annotations
+\end{itemize}
+<<measure>>=
+print(mmce)
+print(timetrain)
+@
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Resampling}
+\begin{itemize}
+  \item Resampling techniques: CV, Bootstrap, Subsampling, \ldots
+<<rdesc>>=
+cv3f = makeResampleDesc("CV", iters = 3, stratify = TRUE)
+@
+  \item 10-fold CV of rpart on iris
+<<resample>>=
+lrn = makeLearner("classif.rpart")
+cv10f = makeResampleDesc("CV", iters = 10)
+measures = list(mmce, acc)
+
+resample(lrn, task, cv10f, measures)$aggr
+@
+\end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[containsverbatim]{Benchmarking}
+\begin{itemize}
+  \item Compare multiple learners on multiple tasks
+  \item Fair comparisons: same training and test sets for each learner
+\end{itemize}
+<<benchmark>>=
+task = list(iris.task, sonar.task)
+
+learners = list(
+  makeLearner("classif.rpart"),
+  makeLearner("classif.randomForest"),
+  makeLearner("classif.ksvm")
+)
+
+benchmark(learners, tasks, cv10f, mmce)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Parallelization}
+  \begin{itemize}
+    \item Activate with \texttt{parallelMap::parallelStart}
+    \item Backends: \texttt{local}, \texttt{multicore}, \texttt{socket}, \texttt{mpi} and \texttt{BatchJobs} 
+<<parallelMap,eval=FALSE>>=
+parallelStart("BatchJobs")
+benchmark([...])
+parallelStop()
+@
+    \item Parallelization levels 
+<<registeredlevels>>=
+parallelShowRegisteredLevels()
+@
+      Defaults to first possible / most outer loop
+    \item Few iterations in benchmark (loop over \texttt{learners} $\times$ \texttt{tasks}), many in resampling
+<<parallelLevels, eval=FALSE>>=
+parallelStart("multicore", level = "mlr.resample")
+@
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Visualizations: Predictions}
+<<plotLearner>>=
+plotLearnerPrediction(makeLearner("classif.randomForest"), task, 
+  features = c("Sepal.Length", "Sepal.Width"))
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Visualizations II : ROC}
+<<rocr>>=
+
+learners = list(
+  makeLearner("classif.rpart", predict.type = "prob"),
+  makeLearner("classif.qda", predict.type = "prob")
+)
+br = benchmark(learners, sonar.task)
+plotROCRCurves(br)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Wrapper}
+  Create new learners by wrapping existing ones
+\begin{itemize}
+  \item \structure{Preprocessing}: PCA, normalization (z-transformation)
+  \item \structure{Filter}: correlation- and entropy-based, $\mathcal{X}^2$-test, mRMR, \ldots
+  \item \structure{Feature Selection}: (floating) sequential forward/backward, exhaustive search, genetic algorithms, \ldots
+  \item \structure{Impute}: dummy variables, imputations with mean, median, min, max, empirical distribution or other learners
+  \item \structure{Bagging} to fuse learners on bootstraped samples
+  \item \structure{Stacking} to combine models in heterogenous ensembles
+  \item \structure{Over- and Undersampling} for unbalanced classification
+  \item \structure{Parameter Tuning}: grid, optim, random search, genetic algorithms, CMAES, iRace, MBO
+\end{itemize}
+\end{frame}
+
+\begin{frame}[containsverbatim]{Model Selection Example (0)}
+\begin{itemize}
+  \item Random search for RBF SVM on a log scale
+\end{itemize}
+<<tune-rs>>=
+lrn = makeLearner("classif.ksvm", kernel = "rbfdot")
+
+rdesc = makeResampleDesc("Holdout")
+ctrl = makeTuneControlRandom(maxit = 2L)
+tune.ps = makeParamSet(
+  makeNumericParam("C", lower = -10, upper = 10, 
+    trafo = function(x) 2^x),
+  makeNumericParam("sigma", lower = -10, upper = 10, 
+    trafo = function(x) 2^x)
+)
+tuneParams(lrn, iris.task, rdesc, mmce, tune.ps, ctrl)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Model Selection Example (1)}
+\begin{itemize}
+  \item Goal: Find \enquote{best} model for given task 
+  \item Model performance strongly depends on choice of parameters
+  \item Detect inferior models early, don't waste too much time tuning
+  \item Define a multiplex model 
+    \vspace{2pt}
+    \begin{center}
+      \includegraphics[width=0.6\textwidth]{figure/ModelMultiplexer2-crop}
+    \end{center}
+  \item Let a tuner exploit interesting configurations (model + parameters) 
+\end{itemize}
+\end{frame}
+
+\begin{frame}[containsverbatim]{Model Selection Example (2)}
+<<tuning>>=
+# create multiplexed learner
+lrn = makeModelMultiplexer(list(
+  makeLearner("classif.randomForest", ntree = 100),
+  makeLearner("classif.ksvm", kernel = "rbfdot")
+))
+
+# wrap in tuning
+inner = makeResampleDesc("CV", iters = 3L)
+ctrl = makeTuneControlIrace(maxExperiments = 200L)
+tune.ps = makeModelMultiplexerParamSet(lrn,
+  makeIntegerParam("nodesize", lower = 1L, upper = 20L),
+  makeNumericParam("sigma", lower = -10, upper = 10, 
+    trafo = function(x) 2^x)
+  )
+lrn = makeTuneWrapper(lrn, inner, mmce, tune.ps, ctrl)
+@
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Model Selection Example (3)}
+<<tuning-results>>=
+task = makeClassifTask(data = Sonar, target = "Class")
+outer = makeResampleDesc("Subsample", iters = 1)
+res = resample(lrn, task, outer, models = TRUE)
+res$models[[1]]
+@
+Tuned multiplexed and prefiltered survival models applied on high-dimensional gene expression data:\\
+M.~Lang, H.~Kotthaus, P.~Marwedel, J.~Rahnenführer, B.~Bischl. \textit{Automatic model selection for high-dimensional survival analysis}.
+Journal of Statistical Computation and Simulation (2014)
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{OpenML-R-Package}
+
+Current API:
+
+\begin{itemize}
+  \item Explore data and tasks  
+  \item Download data and tasks
+  \item Register learners
+  \item Upload runs
+\end{itemize}
+
+Already nicely connected to mlr!
+
+\end{frame}
+
+\begin{frame}[containsverbatim]{Explore and Select Data}
+<<openml1,size="scriptsize">>= 
+options(width = 80)
+authenticateUser() # uses my OML config file
+listOMLDataSets()[1:3, 1:5]
+listOMLTasks()[1:3, 1:5]
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Download a Data Set}
+<<openml3>>= 
+# uses built in caching from disk
+getOMLDataSet(5L)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Download a Task}
+<<openml2>>= 
+# uses built in caching from disk
+oml.task = getOMLTask(1L)
+print(oml.task)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Running a Task}
+<<openml4>>= 
+lrn = makeLearner("classif.rpart")
+res =  runTaskMlr(oml.task, lrn)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Uploading Learner and Predictions}
+<<openml5, eval=FALSE>>= 
+hash = authenticateUser("your@email.com", "your_password")
+impl = createOpenMLImplementationForMlrLearner(lrn)
+uploadOpenMLImplementation(impl, session.hash = hash)
+uploadOpenMLRun(oml.task, lrn, impl, pred, hash)
+@
+\end{frame}
+
+\begin{frame}{Automatic Model Selection}
+  \begin{block}{Prior approaches:}
+    \begin{itemize}
+      \item Looking for the silver bullet model \\
+        $\leadsto$ \textcolor{blue}{Failure} \\
+      \item Exhaustive benchmarking / search \\
+        $\leadsto$ \textcolor{blue}{Per data set: too expensive} \\
+        $\leadsto$ \textcolor{blue}{Over many: contradicting results}
+      \item Meta-Learning:\\
+        $\leadsto$ \textcolor{blue}{Failure} \\
+        $\leadsto$ \textcolor{blue}{Usually not for preprocessing / hyperparamters}
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Goal:}
+    \begin{itemize}
+      \item Data dependent
+      \item Automatic
+        % \item Include every relevant modeling decision 
+      \item Efficient
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Black-Box-Perspective in Configuration}
+
+  \includegraphics<1>[width=10cm]{figure/bbox1.png}
+  \includegraphics<2>[width=10cm]{figure/bbox2.png}
+  \includegraphics<3>[width=10cm]{figure/bbox3.png}
+  \includegraphics<4>[width=10cm]{figure/bbox4.png}
+  \includegraphics<5>[width=10cm]{figure/bbox5.png}
+\end{frame}
+
+\begin{frame}{General Algorithm Configuration}
+
+\begin{itemize}
+\item Assume a (parametrized) algorithm $a$
+\item Parameter space  $\theta \in \Theta$\\
+      might be discrete and dependent / hierarchical
+\item Stochastic generating process for instances $i \sim P$, where we draw i.i.d. from.
+      (Usually predefined set of instances, and i.i.d.-ness somewhat violated)
+\item Run algorithm $a$ on $i$ and measure performance $f(i, \theta) = run(i, a(\theta))$
+\item Objective: $\min_{\theta \in \Theta} E_P[f(i, \theta)]$
+\item No derivative for $f(\cdot, \theta)$, black-box
+\item $f$ is stochastic / noisy
+\item $f$ is likely expensive to evaluate
+\item Consequence: very hard problem
+\end{itemize}
+$\leadsto$ \textcolor{blue}{Usual approaches: racing or model-based / bayesian optimization}
+% \item VERY poopular nowadays to configure, e.g., discrete solvers for NP-hard problems
+\end{frame}
+
+\section{Iterated F-Racing in a nutshell}
+
+\begin{frame}{Idea of (F-)Racing}
+ \begin{columns}
+    \begin{column}{.35\textwidth}
+      	\begin{tikzpicture}[scale=0.18]
+	        \input{race-styles}
+	        \input{race}
+	      \end{tikzpicture}
+    \end{column}
+    \begin{column}{.65\textwidth}
+          \begin{itemize}
+          \item Write down all candidate solutions 
+          \item Iterate the following till budget exhausted
+          \item One \equote{generation}
+          \begin{itemize}
+            \item Evaluate all candidates on an instance, and another, \ldots
+            \item After some time, compare candidates via statistical test, 
+            e.g., Friedman test with post-hoc analysis for pairs
+            \item Remove outperformed candidates
+          \end{itemize}
+          \item Output: Remaining candidates  
+          \item Yes, the testing completely ignores \equote{sequentiality} and is somewhat heuristic.
+          %But we would only care about this if it would influence optimization efficiency...
+          \end{itemize}
+        \bigskip
+      \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Idea of Iterated F-Racing}
+\begin{block}{}
+Why doesn't normal Racing work very often?\\
+Because we might have many of even an infinite number of candidates
+\end{block} 
+
+\begin{block}{}
+\begin{itemize}
+\item Have a stochastic model to draw candidates from in every generation
+\item For each parameter: Univariate, independent distribution (factorized joint distribution)
+\item Sample distributions centered at \equote{elite} candidates from previous generation(s)
+\item Reduce distributions' width / variance in later generations for convergence
+\end{itemize}
+\end{block} 
+\end{frame}
+
+
+\begin{frame}{Idea of Iterated F-Racing}
+\begin{block}{Whats good about this}
+\begin{itemize}
+\item Very simple and generic algorithm
+\item Can easily be parallelized 
+\item A nice R package exists: irace\footnote{Lopez-Ibanez et al, \enquote{The irace package, Iterated Race for Automatic Algorithm Configuration. Technical Report TR/IRIDIA/2011-004, IRIDIA, Université libre de Bruxelles, Belgium, 2011.}}\\
+      % We \equote{hacked} irace little bit, 
+      % so evals can be parallelized with our \pkg{BatchJobs} R package 
+      % on virtually any HPC cluster
+\end{itemize}
+\end{block} 
+
+\begin{block}{What might be not so good}
+\begin{itemize}
+\item  Quite strong (wrong?) assumptions in the probability model
+\item  Sequential model-based optimization is probably more efficient
+      (But be careful: Somewhat my personal experience and bias,\\
+      as not so many large scale comparisons exist)
+\end{itemize}
+\end{block} 
+\end{frame}
+
+
+\begin{frame}{Sequential model-based optimization}
+ % \begin{columns}
+ % \begin{column}{.45\textwidth}
+% \begin{small}
+  \begin{block}{}
+    \begin{itemize}
+      \item Let's focus on a simpler problem for now
+      \item Setting: Expensive black-box poblem $f: x \rightarrow \mathbb{R} = min!$ 
+      \item Classical problem: Computer simulation with a bunch of control parameters and 
+        performance output
+      \item Idea: Let's approximate $f$ via regression! 
+    \end{itemize}
+  \end{block}
+  \begin{block}{Generic MBO Pseudo Code}
+    \begin{itemize}
+      \item Create initial space filling design and evaluate with $f$
+      \item In each iteration:
+        \begin{itemize}
+          \item Fit regression model 
+          \item Propose point via infill criterion, e.g., expected improvement
+            \[ \operatorname{EI}(x)\uparrow \;\Longleftrightarrow\; \hat{y} \downarrow \; \wedge \; \widehat{\operatorname{se}}\left(\hat{y}\right) \uparrow \]
+          \item Evaluate proposed point 
+          \item Add to design
+        \end{itemize}
+    \end{itemize}
+  \end{block}
+% \end{small}
+% \end{column}
+\end{frame}
+
+
+% mlrMBO \url{http://www.github.com/berndbischl/mlrMBO]
+% % \item Jones et al, \enquote{Efficient Global Optimization of Expensive
+% % Black-Box Functions}, J. of Global Opt. 13: 455-492, 1998.
+% % \end{itemize}
+\begin{frame}
+ \begin{figure}
+  \only<1>{\includegraphics[width=0.85\textwidth]{figure/smbo_ex_4}}
+  \only<2>{\includegraphics[width=0.85\textwidth]{figure/smbo_ex_5}}
+  \only<3>{\includegraphics[width=0.85\textwidth]{figure/smbo_ex_6}}
+ \end{figure}
+\end{frame}
+
+
+
+
+\begin{frame}{Infill Criterion - Expected improvement}
+\begin{itemize}
+\item Define improvement at $x$ over best visited point
+      with $y = \ymin$ as random variable
+      $\Ix = |\ymin - \yx|^+ $
+\item For kriging $\yx \sim N(\yhx, \vhx)$ (given $x$ and observed data)
+\item Now define $\EIx$ simply as conditional expectation
+\item Expectation is integral over normal density starting at $\ymin$
+\end{itemize}
+Result: $ EI(x) = \left(\ymin - \yhx \right) \Phi \left( \frac{\ymin - \yhx}{\shx} \right) +
+         \shx \phi \left( \frac{\ymin - \yhx}{\shx} \right) $
+
+         \begin{figure}[b]
+\includegraphics[width = \textwidth, height = 4cm]{figure/Grafik3}
+\end{figure}
+\end{frame}
+
+
+
+
+
+
+\begin{frame}{Model selection in Machine Learning}
+% \begin{columns}
+% \begin{column}{.25\textwidth}
+% \begin{small}
+% \begin{itemize}
+% \item Select class of model, preprocessing, all parameters
+% \item Instance: train-test split
+% \item Objective:\\train + predict + eval
+% \end{itemize}
+% \end{small}
+% \end{column}
+% \begin{column}{.55\textwidth}
+\begin{center}
+\includegraphics[width = 7cm]{figure/chain.pdf}
+\end{center}
+% \end{column}
+% \end{columns}
+\begin{center}
+$\leadsto$ \textcolor{blue}{Minimal risk principle (2nd level inference)}
+\end{center}
+\end{frame}
+
+
+\begin{frame}{From Normal MBO to Hyperarameter Tuning}
+  \begin{itemize}
+  \item Instances are resampling training / test splits 
+  \item Discrete choices like \textit{which method to apply} become categorical parameters
+  \item Chain mlr operations (e.g. feature filter + ML model) 
+    so we can jointly optimize complex systems 
+  \item For discrete parameters we can either use special GP kernels or random forests
+  \item Dependent parameters can be handled via special kernels or imputation
+  \item In the future: Estimate and respect resource requirements to improve efficiency
+  \end{itemize}
+\end{frame}
+
+
+\frame[c]{
+\frametitle{mlrMBO: Model-Based / Bayesian Optimization Toolbox}
+
+\begin{columns}
+  \begin{column}{.35\textwidth}
+
+    \begin{itemize}
+      \item Any Regression 
+      \item Arbitrary Infill
+      \item Single - or multi-crit  
+      \item Parallel
+      \item Algorithm-Configuration
+      \item Active Research
+    \end{itemize}
+  \end{column}
+
+  \begin{column}{.65\textwidth}
+    \includegraphics[width = \textwidth]{figure/mlrMBO1.pdf}
+  \end{column}
+
+\end{columns}
+
+\begin{center}
+  \large
+  \url{https://github.com/berndbischl/mlrMBO}
+\end{center}
+}
+
+\begin{frame}{Summary: Why is This Useful?}
+  \begin{itemize}
+    \item Expensive optimization problem, e.g. parameter optimization of an expensive simulator
+    \item For efficient model selection in ML, especially on Big Data
+    \item General algorithm configuration, e.g., solvers for discrete optimization problems
+    \item Multicrit is possible too, we did this e.g. for SVMs on large data
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Selected Publications}
+
+  \begin{itemize}
+
+    \item M. Lang, H. Kotthaus, P. Marwedel, C. Weihs, J. Rahnenführer, and B. Bischl. 
+      \textbf{Automatic model selection for high-dimensional survival analysis}.
+      Journal of Statistical Computation and Simulation, 85(1):62–76, 2015.
+
+    \item P. Koch, B. Bischl, O. Flasch, T. Bartz-Beielstein, C. Weihs, and W. Konen: 
+      \textbf{Tuning and evolution of support vector kernels}. 
+      Evolutionary Intelligence, 5(3):153–170, 2012.
+
+    \item D. Horn, T. Wagner, D. Biermann, C. Weihs, and B. Bischl: 
+      \textbf{Model-based multi-objective optimization: Taxonomy, multi-point proposal, toolbox and benchmark}. 
+      In Evolutionary Multi-Criterion Optimization (EMO), Lecture Notes in Computer Science, 2015.
+
+    \item B. Bischl, S. Wessing, N. Bauer, K. Friedrichs, and C. Weihs: 
+      \textbf{MOI-MBO: Multiobjective infill for parallel model-based optimization}.
+        In Learning and Intelligent Optimization Conference (LION), 2014.
+
+    \item B. Bischl, J. Schiffner, and C. Weihs:  
+      \textbf{Benchmarking classification algorithms on high-performance computing clusters}.
+        Studies in Data Analysis, Machine Learning and Knowledge Discovery.
+
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{The End...}
+  \begin{itemize}
+
+    \item Probably: I am overtime already, as always. Sorry....
+    \item Still: I left out so many interesting details w.r.t. to details\\
+      Talk to me if you are interested!
+  \end{itemize}
+
+\end{frame}
+
+
+
+\begin{frame}{Kriging and local uncertainty prediction}
+
+Model: Zero-mean GP with const. trend and cov. kernel $k_\theta(x_1, x_2)$.
+\begin{itemize}
+\item $\vecy = (y_1, \ldots, y_n)^T$, $\matK = (k(\vecx_i, \vecx_j))_{i,j=1,\ldots,n}$
+\item $\kstarx = (k(\vecx_1, \vecx), \ldots, k(\vecx_n, \vecx))^T$
+\item $\muh = \vecone^T \matK^{-1} \vecy / \vecone^T \matK^{-1} \vecone$ (BLUE)
+\item Prediction: $ \hat{y}(x) = E[ Y(x) | Y(x_i) = y_i, i=1, \ldots, n ] = $ \\
+$\hat{\mu} + \textbf{k}_n(x)^T K^{-1} (\textbf{y} - \hat{\mu} \textbf{1})$
+\item Prediction: $ \yhx = \muh + \kstarx^T \matK^{-1} (\vecy - \muh \vecone)$
+\item Uncertainty: $s^{2}(x) = Var[ Y(x) | Y(x_i) = y_i, i=1, \ldots, n ] = $\\
+$ \sigma^{2} - \textbf{k}^T_n(x) K^{-1} \textbf{k}_n(x) + \frac{(1 - \textbf{1}^T K^{-1} \textbf{k}^T_n(x))^2}{\textbf{1}^T K^{-1} \textbf{1}}$
+% \item Uncertainty: $\vhx= \sigma^2 - \kstarx^T \matK^{-1} \kstarx +
+  % \frac{(1 - \vecone^T \matK^{-1} \kstarx)^2}{\vecone^T \matK^{-1} \vecone}$
+\end{itemize}
+% \begin{tabular}{ll}
+% Observations	& $y_{i} = \sum^{p}_{j=1} f_{j}(x_{i})\beta_{j} + Z(x_{i}) = f^{T}(x_{i})\beta + Z(x_{i})$\\
+
+% Prediction	& $\hat{y_{0}} = \underbrace{f^{T}_{0}\hat{\beta}}_{Regression\;function} + r^{T}_{0}R^{-1} \underbrace{(y^{n} - F\hat{\beta})}_{Systematic\;deviations}$\\
+
+
+% Local Uncertainty & $s^{2}(x) = \sigma^{2} \left[1 - r^{'}R^{-1}r + \frac{(1 - 1^{'}R^{-1}r)^{2}}{1^{'}R^{-1}r}\right]$
+
+% \end{tabular}
+
+
+\begin{figure}
+\centering
+\includegraphics[width = 9cm, height = 4cm]{figure/Grafik2}
+\end{figure}
+
+
+\end{frame}
+
+
+
+\end{document}

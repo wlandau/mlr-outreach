@@ -1,0 +1,77 @@
+\backupbegin
+
+\begin{frame}[fragile, allowframebreaks]{Packages \& Bibliography}
+\begin{small}
+\begin{thebibliography}{10}
+  \beamertemplatearticlebibitems
+    \bibitem{fda.usc}
+    Manuel Febrero-Bande and Manuel {Oviedo de la Fuente}
+    \newblock Statistical Computing in Functional Data Analysis: The {R} Package fda.usc.
+    \newblock R package
+  \bibitem{fdboost}
+    Brockhaus, S. and Ruegamer, D.
+    \newblock {\em FDboost: Boosting Functional Regression Models,}.
+    \newblock R package
+  \bibitem{mlr}
+    Bischl B, Lang M, Kotthoff L, Schiffner J, Richter J, Studerus E, Casalicchio G and Jones
+Z (2016)
+    \newblock mlr: Machine Learning in R.
+    \newblock {\em Journal of Machine Learning Research}, 17(170):1--5, 2016
+  \bibitem{refund}
+    Jeff Goldsmith and Fabian Scheipl and Lei Huang and Julia Wrobel and Jonathan Gellar and Jaroslaw Harezlak and Mathew W. McLean and Bruce Swihart and Luo Xiao and Ciprian Crainiceanu and Philip T. Reiss
+    \newblock refund: Regression with Functional Data
+    \newblock R package
+      \bibitem{wavelets}
+    Eric Aldrich
+    \newblock wavelets: A package of functions for computing wavelet filters, wavelet
+transforms and multiresolution analyses.
+    \newblock R package
+  \end{thebibliography}
+  And many, many more such as \texttt{classiFunc, rucrdtw, tsfeatures, ...}
+\end{small}
+\end{frame}
+
+\begin{frame}[fragile]{FuelSubset Data}
+\textbf{Spectral Data Of Fossil Fuels} \\
+For 129 laboratory samples of fossil fuels the heat value and the humidity were determined together with two spectra. One spectrum is ultraviolet-visible (UV-VIS), measured at 1335 wavelengths in the range of 250.4 to 878.4 nanometer (nm), the other a near infrared spectrum (NIR) measured at 2307 wavelengths in the range of 800.4 to 2779.0 nm. fuelSubset is a subset of the original dataset containing only 10\% of the original measures of the spectra, resulting in 231 measures of the NIR spectrum and 134 measures of the UVVIS spectrum.
+\end{frame}
+
+\begin{frame}[fragile]{Gunpoint Data}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.3]{figure/gunpoint.png}
+\end{center}
+\end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Fourier Transform II}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.22]{figure/ft_example.png}
+\end{center}
+\end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Result of tuning xgboost and feature extraction}
+<<cache = TRUE, message = FALSE, warning=FALSE>>=
+res
+@
+\end{frame}
+
+\begin{frame}[fragile]{Benchmark II}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.2]{figure/bench_ranking.png}
+\end{center}
+\end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Benchmark III}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.2]{figure/bench_individual_ds.png}
+\end{center}
+\end{figure}
+\end{frame}
+
+\backupend

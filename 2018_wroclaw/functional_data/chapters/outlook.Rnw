@@ -1,0 +1,25 @@
+\begin{frame}[plain]{Status of the project}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.8]{figure/wip.jpeg}
+\end{center}
+\caption{Source: \url{https://twitter.com/thewippod}}
+\end{figure}
+\end{frame}
+
+\begin{frame}[plain]{Future extensions}
+\begin{itemize}
+\item Include full FDA preprocessing pipeline (curve registration etc.)
+\item Clustering \& Anomaly Detection
+\item More learners \& feature extractors
+\end{itemize}
+\vspace{0.5cm}
+\begin{center}
+\textbf{Contributions and suggestions are welcome!}
+\end{center}
+\end{frame}
+
+
+\begin{frame}[plain, standout]
+  Questions?
+\end{frame}

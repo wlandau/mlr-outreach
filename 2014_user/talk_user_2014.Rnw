@@ -1,0 +1,267 @@
+\documentclass[10pt]{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{csquotes}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{xspace}
+\usepackage{amsmath}
+\usepackage{xspace}
+\usefonttheme{serif}
+\usecolortheme{whale}
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+\definecolor{checkgreen}{HTML}{18A126}
+\definecolor{errorred}{HTML}{FF0000}
+
+\newcommand{\R}{\texttt{R}\xspace}
+\newcommand{\mlr}{\texttt{mlr}\xspace}
+\newcommand{\eg}{e.\,g.\xspace}
+\newcommand{\ie}{i.\,e.\xspace}
+\newcommand{\cf}{cf.\xspace}
+
+\title[mlr]{mlr: Machine Learning in R}
+\author{Michel~Lang, Bernd~Bischl, Jakob~Richter}
+\date{}
+
+\begin{document}
+
+<<setup, include=FALSE>>=
+library(knitr)
+library(BBmisc)
+library(parallel)
+library(parallelMap)
+library(mlr)
+library(irace)
+library(rpart)
+library(e1071)
+library(BatchJobs)
+library(kernlab)
+library(ggplot2)
+library(randomForest)
+options(width=56)
+set.seed(1111)
+opts_chunk$set(size = 'footnotesize',
+               cache = TRUE,
+               fig.width=9 * 0.8,
+               fig.height=6 * 0.8,
+               fig.align="center",
+               out.width='.95\\textwidth')
+configureMlr(show.learner.output = FALSE, show.info = FALSE, on.learner.warning = "quiet")
+options(parallelMap.default.show.info = FALSE)
+knit_hooks$set(crop=hook_pdfcrop)
+@
+
+\begin{frame}
+  \titlepage
+  \begin{center}
+    \texttt{mlr 2.0}:
+    \url{https://github.com/berndbischl/mlr}\\
+    (uploaded to CRAN)
+
+  \end{center}
+\end{frame}
+
+\begin{frame}{mlr?}
+\begin{itemize}
+  \item Machine learning experiments are well structured 
+  \item Definition by plugging operators together (e.g., Weka or RapidMiner):
+    \includegraphics[width=0.9\textwidth]{figure/rapidminer.png}
+  \item No unified interface for machine learning in R!
+  \item Experiments require lengthy, tedious and error-prone code
+\end{itemize}
+\begin{center}
+  \structure{mlr: abstractions, glue code and some own implementations}
+\end{center}
+\end{frame}
+
+<<gatherSummary,include=FALSE>>=
+ee = as.environment("package:mlr")
+nl = table(sub("^makeRLearner\\.([[:alpha:]]+)\\..+", "\\1", methods("makeRLearner")))
+nm = sapply(list(classif = listMeasures("classif"), regr = listMeasures("regr"), surv = listMeasures("surv")), length) - 4
+@
+
+\begin{frame}[containsverbatim]{Task Abstractions}
+  \begin{itemize}
+    \item Regression, classification, survival and cost-sensitive tasks
+    \item Internally: data frame with annotations: target column(s), weights, misclassification costs, \ldots)
+  \end{itemize}
+<<task>>=
+task = makeClassifTask(data = iris, target = "Species")
+print(task)
+@
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+  \begin{itemize}
+    \item \Sexpr{nl["classif"]}~classification, \Sexpr{nl["regr"]}~regression, \Sexpr{nl["surv"]}~survival
+    \item Internally: functions to train and predict, parameter set and annotations 
+  \end{itemize}
+<<learner>>=
+lrn = makeLearner("classif.rpart")
+print(lrn)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Learner Abstractions}
+<<parmset>>=
+getParamSet(lrn)
+@
+
+\end{frame}
+
+\begin{frame}[containsverbatim]{Performance Measures}
+\begin{itemize}
+  \item \Sexpr{nm["classif"]}~classification, \Sexpr{nm["regr"]}~regression, \Sexpr{nm["surv"]}~survival
+  \item Internally: performance function, aggregation function and annotations
+\end{itemize}
+<<measure>>=
+print(mmce)
+print(timetrain)
+@
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Resampling}
+\begin{itemize}
+  \item Resampling techniques: CV, Bootstrap, Subsampling, \ldots
+<<rdesc>>=
+cv3f = makeResampleDesc("CV", iters = 3, stratify = TRUE)
+@
+  \item 10-fold CV of rpart on iris
+<<resample>>=
+lrn = makeLearner("classif.rpart")
+cv10f = makeResampleDesc("CV", iters = 10)
+measures = list(mmce, acc)
+
+resample(lrn, task, cv10f, measures)$aggr
+@
+\end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[containsverbatim]{Benchmarking}
+\begin{itemize}
+  \item Compare multiple learners on multiple tasks
+  \item Fair comparisons: same training and test sets for each learner
+\end{itemize}
+<<benchmark>>=
+data("Sonar", package = "mlbench")
+tasks = list(
+  makeClassifTask(data = iris, target = "Species"),
+  makeClassifTask(data = Sonar, target = "Class")
+)
+learners = list(
+  makeLearner("classif.rpart"),
+  makeLearner("classif.logreg"),
+  makeLearner("classif.ksvm")
+)
+
+benchmark(learners, tasks, cv10f, mmce)
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Parallelization}
+  \begin{itemize}
+    \item Activate with \texttt{parallelMap::parallelStart}
+    \item Backends: \texttt{local}, \texttt{multicore}, \texttt{socket}, \texttt{mpi} and \texttt{BatchJobs} 
+<<parallelMap,eval=FALSE>>=
+parallelStart("BatchJobs")
+benchmark([...])
+parallelStop()
+@
+    \item Parallelization levels 
+<<registeredlevels>>=
+parallelShowRegisteredLevels()
+@
+      Defaults to first possible / most outer loop
+    \item Few iterations in benchmark (loop over \texttt{learners} $\times$ \texttt{tasks}), many in resampling
+<<parallelLevels, eval=FALSE>>=
+parallelStart("multicore", level = "mlr.resample")
+@
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Visualizations}
+<<plotLearner>>=
+plotLearnerPrediction(makeLearner("classif.randomForest"), task, 
+  features = c("Sepal.Length", "Sepal.Width"))
+@
+\end{frame}
+
+\begin{frame}[containsverbatim]{Wrapper}
+  Create new learners by wrapping existing ones
+\begin{itemize}
+  \item \structure{Preprocessing}: PCA, normalization (z-transformation)
+  \item \structure{Filter}: correlation- and entropy-based, $\mathcal{X}^2$-test, mRMR, \ldots
+  \item \structure{Feature Selection}: (floating) sequential forward/backward, exhaustive search, genetic algorithms, \ldots
+  \item \structure{Impute}: dummy variables, imputations with mean, median, min, max, empirical distribution or other learners
+  \item \structure{Bagging} to fuse learners on bootstraped samples
+  \item \structure{Over- and Undersampling} for unbalanced classification
+  \item \structure{Parameter Tuning}: grid, optim, random search, genetic algorithms, CMAES, iRace, MBO
+\end{itemize}
+\end{frame}
+
+\begin{frame}[containsverbatim]{Model Selection Example (1)}
+\begin{itemize}
+  \item Goal: Find \enquote{best} model for given task 
+  \item Model performance strongly depends on choice of parameters
+  \item Detect inferior models early, don't waste too much time tuning
+  \item Define a multiplex model 
+    \vspace{2pt}
+    \begin{center}
+      \includegraphics[width=0.6\textwidth]{figure/ModelMultiplexer2-crop}
+    \end{center}
+  \item Let a tuner exploit interesting configurations (model + parameters) 
+\end{itemize}
+\end{frame}
+
+\begin{frame}[containsverbatim]{Model Selection Example (2)}
+<<tuning>>=
+# create multiplexed learner
+lrn = makeModelMultiplexer(list(
+  makeLearner("classif.randomForest", ntree = 100),
+  makeLearner("classif.ksvm", kernel = "rbfdot")
+))
+
+# wrap in tuning
+inner = makeResampleDesc("CV", iters = 3L)
+ctrl = makeTuneControlIrace(maxExperiments = 200L)
+tune.ps = makeModelMultiplexerParamSet(lrn,
+  makeIntegerParam("nodesize", lower = 1L, upper = 20L),
+  makeNumericParam("sigma", lower = -10, upper = 10, 
+    trafo = function(x) 2^x)
+  )
+lrn = makeTuneWrapper(lrn, inner, mmce, tune.ps, ctrl)
+@
+\end{frame}
+
+
+\begin{frame}[containsverbatim]{Model Selection Example (3)}
+<<tuning-results>>=
+task = makeClassifTask(data = Sonar, target = "Class")
+outer = makeResampleDesc("Subsample", iters = 1)
+res = resample(lrn, task, outer, models = TRUE)
+res$models[[1]]
+@
+Tuned multiplexed and prefiltered survival models applied on high-dimensional gene expression data:\\
+M.~Lang, H.~Kotthaus, P.~Marwedel, J.~Rahnenführer, B.~Bischl. \textit{Automatic model selection for high-dimensional survival analysis}.
+Journal of Statistical Computation and Simulation (2014)
+\end{frame}
+
+\begin{frame}{Future Work}
+  \begin{itemize}
+    \item Improve survival analysis and cost sensitive classification
+    \item Connect with experiment database OpenML (\url{www.openml.org})
+    \item Support unsupervised tasks, \ie{} clustering
+    \item Support multicriteria optimization
+  \end{itemize}
+  \begin{block}{}\centering
+    Examples and tutorial: \url{https://github.com/berndbischl/mlr}
+  \end{block}
+\end{frame}
+\end{document}

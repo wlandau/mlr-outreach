@@ -1,0 +1,136 @@
+% - Tuning (demo)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Tuning                            %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Hyperparameter Tuning}
+  \begin{itemize}
+    \item Optimize parameters or decisions for ML algorithm w.r.t. the estimated prediction error
+    \item Tuner proposes configuration, eval by resampling, tuner receives performance, iterate
+  \end{itemize}
+  \begin{center}
+  \includegraphics[width = 0.9 \textwidth]{figure/automl3.png}
+  \end{center}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Hyperparameters in \pkg{mlr}}
+<<>>=
+lrn = makeLearner("classif.rpart")
+getParamSet(lrn)
+@
+
+\framebreak
+
+\begin{itemize}
+\item Either set them in constructor or change them later
+\end{itemize}
+
+<<>>=
+lrn = makeLearner("classif.ksvm", C = 5, sigma = 3)
+lrn = setHyperPars(lrn, C = 1, sigma = 2)
+@
+
+\end{vbframe}
+
+
+\begin{vframe}{Grid search}
+    
+Try all combinations of finite grid \\
+$\leadsto$ Inefficient, combinatorial explosion, searches irrelevant areas
+
+<<gridSearch, eval=TRUE, echo=FALSE, message=FALSE, results="hide", fig.height=5>>=
+lrn = makeLearner("classif.ksvm", predict.type = "prob")
+par.set = makeParamSet(
+  makeNumericParam("C", lower = -15, upper = 15,
+  trafo = function(x) 2^x),
+  makeNumericParam("sigma", lower = -15, upper = 15, 
+  trafo = function(x) 2^x)
+)
+
+ctrl.grid = makeTuneControlGrid(resolution = 7)
+set.seed(1)
+res.grid = tuneParams(lrn, task = task, par.set = par.set,
+  resampling = rdesc, control = ctrl.grid,
+  measures = mlr::auc)
+opt.grid = as.data.frame(res.grid$opt.path)
+
+gridSearch = ggplot(opt.grid, aes(x = sigma, y = C, size = 1-auc.test.mean))
+gridSearch + geom_point(shape = 21 , col = "black", fill = "#56B4E9" , alpha = .6)
+@
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Random search}
+    
+Unformly randomly draw configurations,\\
+$\leadsto$ Scales better then grid search, easily extensible
+
+<<randomSearch, eval=TRUE, echo=FALSE, message=FALSE, results="hide", fig.height=5>>=
+tune.ctrl.pic = makeTuneControlRandom(maxit = 40L)
+set.seed(1)
+res.rs = tuneParams(lrn, task = task, par.set = par.set,
+  resampling = rdesc, control = tune.ctrl.pic,
+  measures = mlr::auc)
+opt.grid = as.data.frame(res.rs$opt.path)
+rndSearch = ggplot(opt.grid, aes(x = sigma, y = C, size = 1-auc.test.mean))
+rndSearch + geom_point(shape = 21 , col = "black", fill = "#56B4E9" , alpha = .6) + scale_x_continuous()
+@
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \begin{frame}{Adaptive tuning}
+%   \begin{center}
+%     \includegraphics[width=0.85\textwidth]{figure/ml_abstraction_optimization-crop.pdf}
+%   \end{center}
+% \end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Tuning in \pkg{mlr}}
+
+\begin{itemize}
+\item Create a set of parameters
+\item Here we optimize an RBF SVM on logscale
+\end{itemize}
+
+<<>>=
+lrn = makeLearner("classif.ksvm", 
+  predict.type = "prob")
+
+par.set = makeParamSet(
+  makeNumericParam("C", lower = -8, upper = 8, 
+    trafo = function(x) 2^x),
+  makeNumericParam("sigma", lower = -8, upper = 8, 
+    trafo = function(x) 2^x)
+)
+@
+
+\framebreak
+
+\begin{itemize}
+\item Optimize the hyperparameter of learner
+\end{itemize}
+
+<<>>=
+tune.ctrl = makeTuneControlRandom(maxit = 50L)
+tr = tuneParams(lrn, task = task, par.set = par.set,
+  resampling = rdesc, control = tune.ctrl,
+  measures = mlr::auc)
+@
+
+\framebreak
+
+<<>>=
+head(as.data.frame(tr$opt.path))[, c(1,2,3,7)]
+@
+
+
+\end{vbframe}
+

@@ -1,0 +1,20 @@
+\begin{frame}[fragile]{Setting Up Latex-Math}
+
+All you need to do is to clone the \texttt{latex-math} repository into
+\texttt{./latex\_pres}:
+\begin{verbatim}
+git clone http://www.github.com/compstat-lmu/latex-math
+\end{verbatim}
+
+\alert{Note:} If you do not have cloned the repo the code should also compile.
+Anyway, you then are not able to use \texttt{latex-math}, obviously.
+
+\end{frame}
+
+\begin{frame}{Latex-Math in Action}
+
+\[
+\thetah = \argmin_{\theta \in \Theta} \sumin \Lxyi
+\]
+
+\end{frame}

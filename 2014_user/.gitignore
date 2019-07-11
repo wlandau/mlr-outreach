@@ -1,0 +1,10 @@
+cache/
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.snm
+*.tex
+*.toc

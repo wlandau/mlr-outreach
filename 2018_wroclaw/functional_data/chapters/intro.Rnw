@@ -1,0 +1,45 @@
+\begin{frame}[fragile]{Functional Data}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.6]{figure/ecg_curves.pdf}
+\end{center}
+\caption{\small{Electro-Cardiogram measurements during a heartbeat (Olszewski, 2001)}}
+\end{figure}
+\end{frame}
+
+% \begin{frame}[fragile]{Functional Data in mlr I}
+% \begin{figure}
+% \begin{center}
+% \includegraphics[scale = 0.3]{figure/smoothness_assumption.png}
+% \end{center}
+% \end{figure}
+% \end{frame}
+
+
+\begin{frame}[fragile]{Functional Data in mlr}
+\textbf{Example: Fuelsubset data from FDboost package}
+<<>>=
+data(fuelSubset, package = "FDboost")
+str(fuelSubset)
+df = data.frame(fuelSubset[c("heatan", "h2o", "UVVIS", "NIR")])
+dim(df)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Functional Data in mlr}
+\textbf{How can we use this structure in mlr?}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.3]{figure/standard_vs_fdf.png}
+\end{center}
+\caption{Data structure for functional data}
+\end{figure}
+\end{frame}
+\begin{frame}[fragile]{Functional Data in mlr}
+\textbf{Create a regression task from the dataset}
+<<>>=
+fdf = makeFunctionalData(df,fd.features = list("UVVIS" = 3:136,"NIR" = 137:367))
+fuelsubset.task = makeRegrTask("fuelSubset", data = fdf, target = "heatan")
+fuelsubset.task
+@
+\end{frame}

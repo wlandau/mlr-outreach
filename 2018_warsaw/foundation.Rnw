@@ -1,0 +1,25 @@
+% - mlr association
+% - outlook
+% THE END
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Get in touch                      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{\pkg{mlr} Contribution}
+	\begin{itemize}
+		\item Write an issue on \href{https://github.com/mlr-org/mlr/issues}{\underline{Git}}
+		\item We are founding an association - \textbf{Machine Learning in R e.V} \\
+		subscribe for updates \url{contact.mlr.org@gmail.com}
+	\end{itemize}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}
+  \oneliner{Thanks!}
+\end{vframe}

@@ -1,0 +1,427 @@
+\begin{vframe}{About}
+  \begin{itemize}
+    \item Project home page\\
+    \oneliner{\url{https://github.com/mlr-org/mlr}}
+      \begin{itemize}
+        \item \textbf{Tutorial} for online viewing / download, including many examples
+        \item R documentation rendered in HTML
+        \item If you are interested you can ask questions in the github issue tracker
+        % \item Wiki page for this tutorial (slides, hands on solutions, \ldots)
+      \end{itemize}
+    \item 8-10 main developers, quite a few contributors, 4 GSOC projects in 2015/16 and
+    one coming in 2017
+    \item About 20K lines of code, 8K lines of unit tests
+    % \item If you do not have \pkg{mlr} installed yet, please do so (see wiki page)
+      % \item Same for \pkg{OpenML} (not on CRAN, you'll need \pkg{devools}):
+% <<openml-install,eval=FALSE>>=
+% install.packages("devtools")
+% devtools::install_github("openml/r")
+% @
+  \end{itemize}
+\end{vframe}
+
+% \begin{vframe}{Overview}
+  % \tableofcontents
+% \end{vframe}
+
+% \begin{vframe}
+%   \begin{blocki}{What is (supervised) machine learning?}
+%   \item Learning structure in data:\\
+%     Classification, regression, survival analysis, clustering, $\ldots$
+%   \item The art of predicting stuff
+%   \item Model optimization
+%   \item Understanding of grey-box models
+%   \end{blocki}
+%
+%   \begin{blocki}{Disclaimer}
+%   \item The list is subjective and naively tailored to this talk
+%   \item ML is based on math and statistics, we will (mainly) talk about structure, software, and practical issues here
+%   \end{blocki}
+% \end{vframe}
+
+
+
+% \begin{vframe}{Supervised Classification tasks}
+% <<classification-task-plot,echo=FALSE,fig.height=4>>=
+% set.seed(1)
+% df = data.frame(x = c(rnorm(10, mean = 3), rnorm(10, mean = 5)), y = runif(10), class = rep(c("a", "b"), each = 10))
+% ggplot(df, aes(x = x, y = y, shape = class, color = class)) + geom_point(size = 3) + geom_vline(xintercept = 4, linetype = "longdash")
+% @
+% \structure{Goal}: Predict a class (or membership probabilities)
+% \end{vframe}
+
+
+% \begin{vframe}{Supervised Regression tasks}
+% <<regression-task-plot,echo=FALSE,fig.height=4>>=
+% set.seed(1)
+% f = function(x) 0.5 * x^2 + x + sin(x)
+% x = runif(40, min = -3, max = 3)
+% y = f(x) + rnorm(40)
+% df = data.frame(x = x, y = y)
+% ggplot(df, aes(x, y)) + geom_point(size = 3) + stat_function(fun = f, color = "#FF9999", size = 2)
+% @
+% \structure{Goal}: Predict a continuous output
+% \end{vframe}
+
+
+% \begin{vframe}{Supervised Survival tasks}
+% <<survial-task-plot,echo=FALSE,fig.height=4>>=
+% set.seed(1)
+% data("rats", package = "survival")
+% sf = survfit(Surv(time, status) ~ rx, data = rats)
+% survMisc:::autoplot.survfit(sf, title = "", xLab = "Time", yLab = "$\\hat{S}(t)$\n", survLineSize = 1.5)$plot
+% @
+% \structure{Goal}: Predict a survival function $\hat{S}(t)$, i.e.\ the probability to survive to time point~$t$
+% \end{vframe}
+
+
+% \begin{vframe}{Unsupervised Cluster tasks}
+% <<cluster-task-plot,echo=FALSE,fig.height=4>>=
+% df = iris
+% m = as.matrix(cbind(df$Petal.Length, df$Petal.Width),ncol=2)
+% cl = (kmeans(m,3))
+% df$cluster = factor(cl$cluster)
+% centers = as.data.frame(cl$centers)
+% ggplot(data=df, aes(x=Petal.Length, y=Petal.Width, color=cluster )) +
+%  geom_point() +
+%  geom_point(data=centers, aes(x=V1,y=V2, color='Center')) +
+%  geom_point(data=centers, aes(x=V1,y=V2, color='Center'), size=52, alpha=.3) +
+%  theme(legend.position="none")
+% @
+% \structure{Goal}: Group data into similar clusters (or estimate fuzzy membership probabilities)
+% \end{vframe}
+
+
+% \section{Why mlr?}
+\begin{vframe}{Motivation}
+  \begin{blocki}{The good news}
+  \item CRAN serves hundreds of packages for machine learning
+    % (cf.\ CRAN task view machine learning)
+  \item Often compliant to the unwritten interface definition:
+<<model-standard,eval=FALSE>>=
+model = fit(target ~ ., data = train.data, ...)
+predictions = predict(model, newdata = test.data, ...)
+@
+  \end{blocki}
+% \end{vframe}
+
+% \begin{vframe}{Motivation}
+  \begin{blocki}{The bad news}
+    \item Some packages API is \enquote{just different}
+    \item Functionality is always package or model-dependent, even though the procedure might be general
+    \item No meta-information available or buried in docs
+      % (sometimes not documented at all)
+    % \item Many packages require the user to \enquote{guess} good hyperparameters
+    % \item Result: engthy, tedious and error-prone code
+  \end{blocki}
+  \oneliner{Our goal: A domain-specific language for many machine learning concepts!}
+\end{vframe}
+
+
+\begin{vframe}{Motivation: \pkg{mlr}}
+  \begin{itemize}
+    \item Unified interface for the basic building blocks: tasks, learners, resampling, hyperparameters, \ldots
+    \item Reflections: nearly all objects are queryable (i.e.\ you can ask them for their properties and program on them)
+    \item The OO-structure allows many generic algorithms:
+      \begin{itemize}
+        \item Bagging
+        \item Stacking
+        \item Feature Selection
+        \item \ldots
+      \end{itemize}
+    \item Easily extensible via S3
+      \begin{itemize}
+        \item Extension is not covered here, but explained in detail in the online tutorial
+        \item You do not need to understand S3 to use \pkg{mlr}
+        \item Wondering why we don't use S4? We care about code bloat and speed.
+      \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+\begin{vframe}{}
+<<echo=FALSE>>=
+plotLearnerPrediction(learner = "classif.ksvm", task = iris.task) + theme_minimal()
+@
+
+\end{vframe}
+
+% \begin{vframe}{Some remarks on style}
+%   \begin{blocki*}
+%   \item Function names are camel-case: doThatThing()
+%   \item Arguments and variables are lower-case, with dots: doThatThing(my.arg, another.one)
+%   \item We use \enquote{\code{=}} not \enquote{\code{<-}}
+%   \item We document in a pretty formal fashion, including type info
+%   \item We try to use \enquote{@family} to group functions in the docs
+%   \item We try to arg- and user-error-check in the most safe and informative way
+%   \end{blocki*}
+% \end{vframe}
+
+% \section{Building Blocks}
+
+<<gatherSummary,include=FALSE>>=
+ee = as.environment("package:mlr")
+nl = table(sub("^makeRLearner\\.([[:alpha:]]+)\\..+", "\\1", methods("makeRLearner")))
+nm = sapply(list(classif = listMeasures("classif"), regr = listMeasures("regr"), surv = listMeasures("surv"), cluster = listMeasures("cluster")), length) - 4
+@
+
+\begin{frame}{Building Blocks}
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]{figure/ml_abstraction-crop.pdf}
+  \end{center}
+  \begin{itemize}
+    \item \pkg{mlr} objects: tasks, learners, measures, resampling instances.
+  \end{itemize}
+\end{frame}
+
+% \begin{vframe}{Task Abstraction}
+%   \begin{itemize}
+%     \item Tasks encapsulate data and meta-information about it
+%     \item Regression, classification, clustering, survival tasks
+%     \item Data is stored inside an environment to save memory
+%   \end{itemize}
+% <<task1>>=
+% task = makeClassifTask(data = iris, target = "Species")
+% print(task)
+% @
+% \end{vframe}
+
+
+% \begin{vbframe}{Task Abstraction: API}
+% <<task2>>=
+% getTaskId(task)
+% str(getTaskData(task))
+% @
+% \framebreak
+% <<task3>>=
+% str(getTaskDescription(task))
+% @
+% \framebreak
+% <<task4>>=
+% getTaskSize(task)
+% getTaskFeatureNames(task)
+% getTaskTargetNames(task)
+% getTaskFormula(task)
+% summary(getTaskTargets(task))
+% @
+% \end{vbframe}
+
+
+% \begin{vframe}{Learner Abstraction}
+%   \begin{itemize}
+%     \item Internal structure of learners:
+%       \begin{itemize}
+%         \item wrappers around \code{fit()} and \code{predict()} of the package
+%         \item description of the parameter set
+%         \item annotations
+%       \end{itemize}
+%     \item Naming convention: \texttt{<tasktype>.<functionname>}\\
+%       e.g.: classif.svm, regr.lm
+% % <<naming-convention,eval=FALSE>>=
+% % makeLearner("classif.rpart")
+% % makeLearner("regr.rpart")
+% % @
+%     % \item For the lazy: Instead of creating the object, you can also pass a string to nearly
+%     %   every function that takes a learner
+%     % \item Reduction algorithms for cost-sensitive classification
+%     \item Adding custom learners is covered in the tutorial
+%   \end{itemize}
+% % \framebreak
+% <<learner1>>=
+% lrn = makeLearner("classif.svm", predict.type = "prob", kernel = "linear", cost = 1)
+% print(lrn)
+% @
+% \end{vframe}
+
+\begin{vbframe}{What Learners are available?}
+  \begin{scriptsize}
+  \begin{columns}
+    \column{0.5\textwidth}
+    \begin{blocki}{Classification (\Sexpr{nl["classif"]})}
+        \item LDA, QDA, RDA, MDA
+        \item Trees and forests
+        \item Boosting (different variants)
+        \item SVMs (different variants)
+        \item Deep Neural Networks
+        \item \ldots
+    \end{blocki}
+    \begin{blocki}{Clustering (\Sexpr{nl["cluster"]})}
+        \item K-Means
+        \item EM
+        \item DBscan
+        \item X-Means
+        \item \ldots
+    \end{blocki}
+    \column{0.4\textwidth}
+    \begin{blocki}{Regression (\Sexpr{nl["regr"]})}
+        \item Linear, lasso and ridge
+        \item Boosting
+        \item Trees and forests
+        \item Gaussian processes
+        \item Deep Neural Networks
+        \item \ldots
+    \end{blocki}
+    \begin{blocki}{Survival (\Sexpr{nl["surv"]})}
+        \item Cox-PH
+        \item Cox-Boost
+        \item Random survival forest
+        \item Penalized regression
+        \item \ldots
+    \end{blocki}
+  \end{columns}
+  \end{scriptsize}
+  \oneliner{We can explore them on the webpage -- or ask \pkg{mlr}}
+
+\framebreak
+
+<<listlrns1, warning=FALSE>>=
+# list all classification learners which can predict probabilities
+# and allow multiclass classification
+listLearners("classif",
+  properties = c("prob", "multiclass"))[1:5, c(-2, -5, -16)]
+@
+
+% \framebreak
+
+% \oneliner{Get all applicable learners for a task}
+% <<listlrns2>>=
+% listLearners(task)[1:5, c(-2, -5, -16)]
+% @
+
+\end{vbframe}
+
+\begin{vframe}{Parameter Abstraction}
+  \begin{itemize}
+    \item Extensive meta-information for hyperparameters available:\\
+      storage type, constraints, defaults, dependencies
+    \item Automatically checked for feasibility
+    \item You can program on parameters!
+    \end{itemize}
+<<parmset, size='tiny', echo=4>>=
+w = getOption("width")
+lrn = makeLearner("classif.svm", predict.type = "prob", kernel = "linear", cost = 1)
+options(width = 160)
+getParamSet(lrn)
+options(width = w)
+@
+\end{vframe}
+
+% \begin{vframe}{Learner Abstraction: API}
+% <<learner2>>=
+% lrn$properties
+% getHyperPars(lrn)
+% lrn = setHyperPars(lrn, cp = 0.3)
+% lrn = setPredictType(lrn, "prob")
+% lrn = setPredictThreshold(lrn, 0.7);
+% @
+% \end{vframe}
+
+
+% \begin{vframe}{Performance Measures}
+%   \begin{itemize}
+%     \item Performance measures evaluate the predictions a test set and aggregate them over multiple in resampling iterations
+%     \item \Sexpr{nm["classif"]}~classification, \Sexpr{nm["regr"]}~regression,  \Sexpr{nm["cluster"]}~cluster, \Sexpr{nm["surv"]}~survival
+%     \item Internally: performance and aggregation function, annotations
+%     \item Adding custom measures is covered in the tutorial
+% \end{itemize}
+% <<measure>>=
+% print(mmce)
+% listMeasures("classif")[1:12]
+% @
+% \end{vframe}
+
+% \begin{vframe}{What measures are available?}
+  % \oneliner{We can explore them on the webpage -- or ask \pkg{mlr}}
+% <<measure2>>=
+% listMeasures("classif")
+% listMeasures(task)
+% @
+% \end{vframe}
+
+% \begin{vframe}{R Example}
+  % \oneliner{Training and prediction}
+% \end{vframe}
+
+\begin{vbframe}{Basic Usage: Train/Predict/Evaluate}
+
+<<tpe>>=
+#Split data in train and test data
+iris.train = iris[seq(1, 150, by = 2), ] # 1, 3, 5, 7, ... obs.
+iris.test = iris[seq(2, 150, by = 2), ] # 2, 4, 6, 8, ... obs.
+
+# create a task
+task = makeClassifTask(data = iris.train, target = "Species")
+
+# create a learner
+lrn = makeLearner("classif.rpart")
+
+# train the model
+mod = train(lrn, task)
+
+# predict the test data
+pred = predict(mod, newdata = iris.test)
+
+# evaluate performance of the model on the test data
+performance(pred, mmce)
+@
+
+\end{vbframe}
+
+
+\begin{vbframe}{Resampling Abstraction}
+
+\includegraphics[width = \textwidth]{figure/Nested_Resampling.png}
+
+\framebreak
+
+  \begin{itemize}
+    \item Procedure: Train, Predict, Eval, Repeat.
+    \item Aim: Estimate expected model performance.
+      \begin{itemize}
+        \item Hold-Out
+        \item Cross-validation (normal, repeated)
+        \item Bootstrap (OOB, B632, B632+)
+        \item Subsampling
+        \item Stratification
+        \item Blocking
+      \end{itemize}
+    \item Instantiate it or not (= create data split indices)
+  \end{itemize}
+<<resample1>>=
+rdesc = makeResampleDesc("CV", iters = 3)
+rin = makeResampleInstance(rdesc, task = task)
+str(rin$train.inds)
+@
+  \framebreak
+  \begin{blocki}{Resampling a learner}
+    \item Measures on test (or train) sets
+    \item Returns aggregated values, predictions and some useful extra information
+<<resample2>>=
+lrn = makeLearner("classif.rpart")
+rdesc = makeResampleDesc("CV", iters = 3)
+measures = list(mmce, timetrain)
+r = resample(lrn, task, rdesc, measures = measures)
+@
+\item For the lazy
+<<resample3, eval = FALSE>>=
+r = crossval(lrn, task, iters = 3, measures = measures)
+@
+  \end{blocki}
+\framebreak
+<<resample2b>>=
+print(r)
+@
+Container object: Measures (aggregated and for each test set), predictions, models, \dots
+\end{vbframe}
+% \begin{vframe}{Configuring the Package}
+
+% \begin{blocki*}
+%   \item What to do when training fails? error, warn, or be quiet?\\
+%     \tarrow You don't want to stop in complex loops like \code{benchmark}\\
+%     \tarrow \code{FailureModel} is created that predicts NAs
+%   \item Show verbose info messages?
+%   \item What if parameters are not described in learner?
+%   \item \code{?configureMlr} sets global flags and can be overwritten for individual learners
+% \end{blocki*}
+% \end{vframe}
+
+

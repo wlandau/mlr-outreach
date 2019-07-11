@@ -1,0 +1,21 @@
+\begin{frame}[fragile]{Benchmark Setup}
+\begin{itemize}
+\item Compare to UCR Time Series Classification Repository Bakeoff
+\item 83 classification data sets (univariate time series)
+\item Fixed train-test splits
+\item tuning via random search (100iters) and MBO (100iters)
+\item Algorithms: \\
+  \begin{itemize}
+  \item Functional Data Algorithms (\texttt{fda.usc, FDboost, refund}})
+  \item Feature Extraction (\texttt{wavelets, refund, mboost, FDboost, rucrdtw, ...})
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Benchmark Results}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.2]{figure/benchmark.png}
+\end{center}
+\end{figure}
+\end{frame}

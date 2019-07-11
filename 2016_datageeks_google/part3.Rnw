@@ -1,0 +1,242 @@
+\section{More nice features} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\section{Parallelization}
+
+\begin{vbframe}{Parallelization} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \begin{itemize}
+    \item We use our own package: \pkg{parallelMap}
+    \item Setup:
+<<parallelMap,eval=FALSE>>=
+parallelStart("multicore")
+benchmark(...)
+parallelStop()
+@
+    \item Backends: \texttt{local}, \texttt{multicore}, \texttt{socket}, \texttt{mpi} and \texttt{BatchJobs}
+    \item The latter means support for: makeshift SSH-clusters and HPC schedulers like SLURM, Torque/PBS, SGE or LSF
+  \item Levels allow fine grained control over the parallelization
+    \begin{itemize}
+  \item \code{mlr.resample}: Job = \enquote{train / test step}
+  \item \code{mlr.tuneParams}: Job = \enquote{resample with these parameter settings}
+  \item \code{mlr.selectFeatures}: Job = \enquote{resample with this feature subset}
+    \item \code{mlr.benchmark}: Job = \enquote{evaluate this learner on this data set}
+    \end{itemize}
+    \end{itemize}
+
+\framebreak
+
+<<message=FALSE>>=
+lrns = list(makeLearner("classif.rpart"), makeLearner("classif.svm"))
+rdesc = makeResampleDesc("Bootstrap", iters = 100)
+parallelStart("multicore", 8)
+b = benchmark(lrns, iris.task, rdesc)
+parallelStop()
+@
+
+Parallelize the bootstrap instead:
+<<eval=FALSE>>=
+parallelStart("multicore", 8, level = "mlr.resample") 
+b = benchmark(lrns, iris.task, rdesc)
+parallelStop()
+@
+\end{vbframe}
+
+
+%\section{Partial Prediction} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{vbframe}{Partial Predictions Plots}
+\begin{blocki}{Partial Predictions}
+\item Estimate how the learned prediction function is affected by one or more features.
+\item Displays marginalized version of the predictions of one or multiple effects.
+\item Reduce high dimensional function estimated by the learner.
+\end{blocki}
+
+<<message=FALSE>>=
+library(kernlab)
+lrn.classif = makeLearner("classif.svm", predict.type = "prob")
+fit.classif = train(lrn.classif, iris.task)
+pd = generatePartialPredictionData(fit.classif, iris.task, "Petal.Width")
+
+plotPartialPrediction(pd)
+@
+
+%' \framebreak
+%' <<fig.height=4, fig.width=8>>=
+%' pd = generatePartialPredictionData(fit.classif, iris.task, 
+%'   "Petal.Length", individual = TRUE)
+%' plotPartialPrediction(pd)
+%' @
+\end{vbframe}
+
+\begin{vbframe}{\pkg{mlr} Learner Wrappers}
+  \begin{blocki}{What?}
+    \item Extend the functionality of learners by adding an \pkg{mlr} wrapper to them
+    \item The wrapper hooks into the train and predict of the base learner and extends it
+    \item This way, you can create a new \pkg{mlr} learner with extended functionality
+    \item Hyperparameter definition spaces get joined!
+  \end{blocki}
+  \framebreak
+  \begin{blocki}{Available Wrappers}
+    \item \structure{Preprocessing}: PCA, normalization (z-transformation)
+    \item \structure{Parameter Tuning}: grid, optim, random search, genetic algorithms, CMAES, iRace, MBO
+    \item \structure{Filter}: correlation- and entropy-based, $\mathcal{X}^2$-test, mRMR, \ldots
+    \item \structure{Feature Selection}: (floating) sequential forward/backward, exhaustive search, genetic algorithms, \ldots
+    \item \structure{Impute}: dummy variables, imputations with mean, median, min, max, empirical distribution or other learners
+    \item \structure{Bagging} to fuse learners on bootstraped samples
+    \item \structure{Stacking} to combine models in heterogenous ensembles
+    \item \structure{Over- and Undersampling} for unbalanced classification
+  \end{blocki}
+\end{vbframe}
+% \begin{vframe}{Nested Resampling}
+%   \begin{itemize}
+%     \item Using the TuningWrapper or FeatureSelectionWrapper allows to enable nested resampling
+%     \item Ensures \textbf{unbiased} results for model optimization
+%     \item Everything else is statistically unsound
+%   \end{itemize}
+%   \begin{center}
+%     \includegraphics[width=8cm]{figure/nested.png}
+%   \end{center}
+% \end{vframe}
+\begin{vframe}{R Example with \texttt{FilterWrapper}}
+
+\begin{itemize}
+%\item In the following regression example we consider the BostonHousing data set. 
+\item A Learner can be fused with any wrapper, e.g. with a feature filter. 
+%Use a regression tree and determine the optimal percentage value for feature selection such that the 3-fold cross-validated MSE of the learner is minimal. 
+%\item As search strategy for tuning a grid search is used.
+\item \texttt{makeFilterWrapper} introduces the feature selection threshold \texttt{fw.perc} (selects \texttt{fw.perc*100\%} of the top scoring features) as new hyperparameter.
+\item The optimal value for \texttt{fw.perc} can be determined by grid-search.
+\end{itemize}
+
+<<echo=c(1,4)>>=
+lrn = makeFilterWrapper(learner = "classif.lda", fw.method = "information.gain")
+w = getOption("width")
+options(width = 160)
+getParamSet(lrn)
+options(width = w)
+@
+\end{vframe}
+
+
+
+
+% % \section{Part3} %----------------------------------------------------------------------------------
+% \section{Visualizations}
+
+% \begin{vframe}{Visualizations}
+%   \begin{itemize}
+%     % \item A brief time ago, \pkg{mlr} was pretty bare-bones here
+%     \item We use \pkg{ggplot2} and interactive \pkg{ggvis} as a standard, if possible
+%     \item Some plots use Viper Charts as backend (cost curves, lift charts, \ldots)
+%     \item GSOC project 2015 with Zach Jones
+%     \begin{itemize}
+%       \item Demo plots for models in teaching
+%       \item ROC curves
+%       \item Threshold vs. Performance
+%       \item Partial dependency plot
+%       \item Learning curves
+%     \end{itemize}
+%   \end{itemize}
+% \end{vframe}
+
+% \begin{vframe}{R Example}
+%   \oneliner{Visualizations}
+% \end{vframe}
+
+% % \section{caret vs. \pkg{mlr}}
+
+% % \begin{vbframe}{caret vs. mlr}
+
+
+% % % \oneliner{Of course we are biased :)}
+
+% % % \begin{blocki}{Why is caret great}
+% % % \item caret is an overall great package
+% % % \item caret has much better visibility
+% % %   (This sucks. We will work hard on changing this)
+% % % \item caret has a book (I guess we won't -- soon)
+% % % \item caret has a few more regression and classification learners
+% % % \item caret has (rudimentary) support for time-series data\\
+% % %   (\pkg{mlr} will have that soon)
+% % % \end{blocki}
+% % % \framebreak
+
+% % \begin{blocki}{Why we like \pkg{mlr} more}
+% % % \item \pkg{mlr} is under active development by a substantial number of people: 6 core developers, several other packages with lots of interoperability, and 3 GSOC 2015 developers
+% % \item \pkg{mlr} has (in our opinion) a better OO design, class structure and infrastructure for future development and for users
+% % \item This makes things combinable, extensible, predictable
+% % \item More flexible parallelization with \pkg{parallelMap}, even on HPCs via \pkg{BatchJobs}
+% % \item Tuning with advanced methods like \pkg{irace}
+% % \item  Fusing learners with other operations like pre-processing and feature selection
+% % % \item \pkg{mlr} has better infrastructure for training, evaluating, tuning, benchmarking, and visualizing learning algorithms
+% % % \item \pkg{mlr} has (vastly) better unit tests (which means it is more reliable!).
+% % % \item \pkg{mlr} has better software documentation
+% % % \item \pkg{mlr} has a consistent style
+% % \item Nested resampling (required for unbiased results)
+% % \item Survival and cluster analysis
+% % % \item \textbf{With more visibility, funding, and contributors it could be even more awesome}
+% % \end{blocki}
+
+% % % \framebreak
+
+% % % \begin{blocki}{What \pkg{mlr} can do, but caret cannot}
+% % % \item Blocking in resampling
+% % % \item Integrated stacking (a new separate package for caret, \pkg{caretEnsemble})
+% % % \item Partial predictions/dependence for any supervised method
+% % % \item Cost-sensitive learning
+% % % \end{blocki}
+% % \end{vbframe}
+
+
+% \section{OpenML} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{OpenML}
+  %\oneliner{Caution: Work in progress}
+  Main idea: Make ML experiments reproducible, computer-readable and allow collaboration with others.
+  %\begin{blocki}{OpenML?}
+  %\item Main idea: Make ML experiments reproducible, computer-readable and allow collaboration with others.
+  %\item Share everything (e.g. data sets, algorithms and results)
+  %\item Enrich with meta-information
+  %\item Later: Mine the results, meta-learn on it
+  %\end{blocki}
+  \begin{center} 
+  \includegraphics[page=16,width=0.8\textwidth, height=0.7\textheight]{figure/oml-talk.pdf}
+  \end{center}
+\end{vframe}
+
+\begin{vbframe}{OpenML R-Package}
+  %\oneliner{Let's visit website and project page}
+  %\framebreak
+  \oneliner{\url{https://github.com/openml/r}}
+  
+  \begin{blocki}{Tutorial}
+    \item \url{http://openml.github.io/openml-r}
+    \item Caution: Work in progress
+  \end{blocki}
+  
+  \begin{blocki}{Current API in R}
+    \item Explore and Download data and tasks
+    \item Register learners and upload runs
+    \item Explore your own and other people's results
+  \end{blocki}
+
+\framebreak
+
+<<echo=FALSE, results='hide'>>=
+set.seed(12)
+@
+
+<<openml1, message=FALSE>>=
+library(OpenML)
+# set apikey after install (here public read-only key)
+setOMLConfig(apikey = "c1994bdb7ecb3c6f3c8f3b35f4b47f1f", arff.reader = "RWeka")
+oml.task = getOMLTask(1)
+res1 = runTaskMlr(oml.task, makeLearner("classif.rpart"))
+res2 = runTaskMlr(oml.task, makeLearner("classif.randomForest"))
+bmr = mergeBenchmarkResultLearner(res1$bmr, res2$bmr)
+@
+
+\framebreak
+
+<<fig.height=4>>=
+plotBMRBoxplots(bmr)
+@
+
+\end{vbframe}

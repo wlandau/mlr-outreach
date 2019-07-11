@@ -1,0 +1,283 @@
+\documentclass[10pt]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% packages                          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{adjustbox}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,backgrounds,fit,positioning,chains,shadows,decorations.pathmorphing,decorations.pathreplacing,matrix}
+\usepackage{csquotes}
+\usepackage{booktabs}
+\usepackage{wasysym}
+\usepackage[binary-units=true]{siunitx}
+\usepackage{xcolor}
+\usepackage{pifont}
+\usepackage{dsfont}
+\usepackage{hyperref}
+
+\definecolor{tugreen}{cmyk}{0.57, 0, 1.00, 0}
+\definecolor{tugreen1}{cmyk}{0.57, 0, 1.00, 0}
+\definecolor{tugreen2}{HTML}{667E4D}
+\definecolor{tugreen3}{HTML}{72A544}
+\definecolor{tugreen4}{HTML}{3A472E}
+
+\usecolortheme{dove}
+\usetheme{boxes}
+\usefonttheme{structuresmallcapsserif}
+\newenvironment{whiteframe}
+{
+ \usebackgroundtemplate{}
+ \begin{frame}
+}
+{
+ \end{frame}
+}
+
+\usetikzlibrary{shapes,matrix,positioning,chains,arrows,shadows,decorations.pathmorphing,fit,backgrounds}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% change color of items             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\definecolor{mlrBlue}{RGB}{003,099,142}
+\setbeamercolor{itemize item}{fg=mlrBlue}
+\setbeamertemplate{itemize item}[square]
+
+\definecolor{mlrGrey}{RGB}{183,183,183}
+\setbeamercolor{itemize subitem}{fg=mlrGrey}
+
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% titlepage                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Machine Learning in R: Package \texttt{mlr}}
+\logo{\includegraphics[scale=0.05]{mlr} \hspace{1.5 mm} \vspace{- 3 mm}}
+\author{Bernd~Bischl\\ Computational Statistics, LMU}
+\titlegraphic{\includegraphics[height=.3\textheight]{mlr}}
+\date{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\norm}[2][\relax]{\ifx#1\relax\ensuremath{\left\Vert#2\right\Vert}\else\ensuremath{\left\Vert#2\right\Vert_{#1}}\fi}
+\newcommand{\ind}{\mathds{1}}
+\newcommand{\pred}[1]{\ind\left(#1\right)}
+\newcommand{\abs}[1]{\ensuremath{\left| #1 \right|}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\pkg}[1]{\texttt{#1}}
+\newcommand{\tarrow}{\textcolor{tugreen1}{{\ding{212}}}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newenvironment{vframe}
+{
+  \begin{frame}[containsverbatim]
+}
+{
+ \end{frame}
+}
+
+\newenvironment{vbframe}
+{
+  \begin{frame}[containsverbatim,allowframebreaks]
+}
+{
+ \end{frame}
+}
+
+\newenvironment{blocki*}
+{
+  \begin{block}{}\begin{itemize}
+}
+{
+\end{itemize}\end{block}
+}
+
+\newenvironment{blocki}[1]
+{
+  \begin{block}{#1}\begin{itemize}
+}
+{
+\end{itemize}\end{block}
+}
+
+\newcommand{\oneliner}[1]{\begin{block}{}\begin{center}\begin{Large}#1\end{Large}\end{center}\end{block}}
+
+
+\renewcommand<>{\sout}[1]{
+  \only#2{\beameroriginal{\sout}{#1}}
+  \invisible#2{#1}
+}
+
+\AtBeginSection{\frame{\sectionpage}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%\SweaveOpts{concordance=TRUE}
+
+<<opts,include=FALSE,cache=FALSE>>=
+library(knitr)
+library(BBmisc)
+library(mlr)
+library(ggplot2)
+library(parallelMap)
+library(tikzDevice)
+library(data.table)
+library(gridExtra)
+library(survMisc)
+library(mlrMBO)
+library(mlrCPO)
+library(iml)
+library(randomForest)
+
+options(width = 80)
+configureMlr(show.info = FALSE)
+configureMlr(show.learner.output = FALSE)
+OPENML_EVAL = TRUE
+
+knit_hooks$set(document = function(x) {
+  # silence xcolor
+  x = sub('\\usepackage[]{color}', '\\usepackage{xcolor}', x, fixed = TRUE)
+  # add an noindent after hooks -> remove blank line
+  x = gsub('(\\\\end\\{knitrout\\}[\n]+)', '\\1\\\\noindent ', x)
+  x
+})
+
+opts_chunk$set(
+   fig.path = "knitr/figures/",
+   cache.path = "knitr/cache/",
+   cache = TRUE,
+   tidy = FALSE,
+#   dev = 'tikz',
+   external = TRUE,
+   fig.align = "center",
+   size = "normalsize",
+   stop = TRUE,
+   fig.width = 9 * 0.8,
+   fig.height = 6 * 0.8,
+   small.mar = TRUE,
+   prompt = TRUE
+)
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Auto ML                           %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Machine Learning}
+  \begin{itemize}
+    \item Successful, but requires human labor and expertise
+    \begin{itemize}
+      \item Pre-process data
+      \item Select/ engineer features
+      \item Select a model family
+      \item Optimize hyperparameters (algorithm parameters)
+      \item $\cdots$
+    \end{itemize}
+    \item Deep learning lets us automatically learn features
+    \begin{itemize}
+      \item Automates feature engineering step, with large amount of data
+      \item Even more sensitive to architectures, hyperparameters, $\cdots$
+    \end{itemize}
+  \end{itemize}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Automatic Machine Learning}
+  \begin{itemize}
+    \item Can algorithms be trained to automatically build end-to-
+end machine learning systems?
+  \end{itemize}
+  
+  \oneliner{Use machine learning to do better machine learning}
+  
+   \begin{itemize}
+    \item Can we turn \\
+   \textit{Solution = data + manual exploration + computation}
+    \item Into \\
+    \textit{Solution = data + computation (x100)}
+  \end{itemize}
+  
+  \framebreak
+  
+  \textbf{Not about automating data scientists}
+  \vspace{3mm}
+    \begin{itemize}
+    \item Efficient exploration of techniques
+    \begin{itemize}
+    \item Automate the tedious aspects (inner loop)
+    \item Make every data scientist a super data scientist
+  \end{itemize}
+    \item Democratisation
+    \begin{itemize}
+    \item Allow individuals, small companies to use machine
+learning effectively (at lower cost)
+\item Open source tools and platforms
+  \end{itemize}
+    \item Data Science
+    \begin{itemize}
+    \item Better understand algorithms, develop better ones
+    \item Self-learning algorithms
+  \end{itemize}
+
+  \end{itemize}
+  
+  
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Machine Learning Pipelines}
+\begin{center}
+  \includegraphics[width = \textwidth]{figure/automl1.png}
+  \end{center}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Automating Machine Learning Pipelines}
+\begin{center}
+  \includegraphics[width = \textwidth]{figure/automl2.png}
+  \end{center}
+  \end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Automatic Machine Learning: Techniques}
+  \begin{itemize}
+    \item \textbf{Bayesian Optimization:} Intelligently optimize pipelines/ architectures by iteratively choosing better ones
+\item \textbf{Genetic algorithms:} Evolve pipelines/architectures to work better for a given application
+\item \textbf{Meta-learning:} learn from previous applications to predict useful pipelines/ architectures for new problems
+\item \textbf{Transfer Learning:} train models on one problem, then transfer (parts) of good solutions to solve new problems.
+\item \textbf{Reinforcement Learning:} Train many models, use performance as "reward" for certain approaches
+\item \textbf{Combinations of all of these}
+  \end{itemize}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Black Box Optimization}
+  \begin{center}
+    \includegraphics[width = \textwidth]{figure/automl3.png}
+  \end{center}
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}

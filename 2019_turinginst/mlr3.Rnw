@@ -1,0 +1,107 @@
+\Sexpr{set_parent('talk.Rnw')}
+
+
+\begin{vframe}{Lessons learned -- Package Ecosystem}
+<<>>=
+@
+  \begin{itemize}
+    \item CRAN has a time limit for R CMD check so that we had to disable most tests here
+    \item This effectivly results in no reverse package checks if one of the suggested packages is uploaded to CRAN. As a result, \pkg{mlr} is permanently broken
+    \item Continouus integration is very hacky, we now have multiple stages to pre-install and cache packages
+  \end{itemize}
+  \oneliner{Dependencies matter}
+\end{vframe}
+
+\begin{vframe}{Lessons learned -- Data structures}
+  \begin{itemize}
+    \item For storage, we often used lists of lists in \pkg{mlr}, e.g. retrieve a model from a benchmark:
+      <<eval=FALSE>>=
+      model = result[["task-id"]][["learner-id"]]$
+       models[[resampling_iteration]]$learner.model
+      @
+    \item This is the most efficient storage (memory-wise), but working with it is tideous and error-prone.
+    \item To overcome these issues, we wrote S3 getters:
+      <<>>=
+      fn = system.file("NAMESPACE", package = "mlr")
+      length(readLines(fn)) # `base` currently has ~1222
+      @
+    \item Codebase is very hard to maintain
+  \end{itemize}
+  \oneliner{We need object orientation}
+
+\end{vframe}
+
+\begin{vframe}{\pkg{mlr3}}
+  \begin{itemize}
+    \item Rewrite of \pkg{mlr}
+    \item Be light on dependencies, but do not re-invent the wheel
+    \item Embrace \pkg{R6} for OO and reference semantics
+    \item Embrace \pkg{data.table} for interal storage / data transformation
+  \end{itemize}
+  \oneliner{https://github.com/mlr-org/mlr3}
+\end{vframe}
+
+\begin{vframe}{Current state of \pkg{mlr3}}
+  Base functionality implemented:
+  \begin{itemize}
+    \item Objects \code{Task}, \code{Learner}, \code{Resampling}, \code{Measure}, \code{Experiment}
+    \item \code{DataBackend} for tasks to work transparently with different data storage engines (Sparse, SQL, ...)
+    \item \code{resample()}, \code{benchmark()}
+    \item Parallelization via package \pkg{future}
+  \end{itemize}
+\end{vframe}
+
+
+\begin{vframe}{Combining \pkg{R6} and \pkg{data.table}}
+  \begin{itemize}
+    \item Instead of lists of lists, we store most information in 2d data.tables using list columns.
+    \item Benchmark Example: Each row describes one experiment and holds all required information:
+    \item Columns which store R6 objects (Task, Learner, Resampling) just store a pointer (32/64 bit)
+    \item Extracting information, subsetting objects, growing results or converting between objects is now embarassingly easy
+  \end{itemize}
+
+\begin{table}[]\footnotesize
+\begin{tabular}{lllll}
+\toprule
+Task                                 & Learner                                      & Resampling                            & Iter                         \\ \midrule
+\textless{}TaskClassif\textgreater{} & \textless{}LearnerClassifRpart\textgreater{} & \textless{}ResamplingCV\textgreater{} & 1          \\ \bottomrule
+\textless{}TaskClassif\textgreater{} & \textless{}LearnerClassifRpart\textgreater{} & \textless{}ResamplingCV\textgreater{} & 2          \\ \bottomrule
+\end{tabular}
+\end{table}
+\end{vframe}
+
+
+\begin{vframe}{Stepwise modeling}
+<<include=FALSE>>=
+library(mlr3)
+lgr::get_logger("mlr3")$set_threshold("warn")
+@
+
+<<size="small">>=
+task = mlr_tasks$get("iris")
+learner = mlr_learners$get("classif.rpart")
+train = 1:120; test = 121:150
+
+e = Experiment$new(task, learner)
+e$train(train)$predict(test)$score()
+@
+\end{vframe}
+
+\begin{vframe}{Experiment Object}
+<<>>=
+e$performance
+class(e$model)
+head(e$test_set, 3)
+head(as.data.table(e$prediction), 3)
+@
+\end{vframe}
+
+\begin{vframe}{Resampling}
+<<size = "footnotesize">>=
+resampling = mlr_resamplings$get("cv")
+rr = resample(task, learner, resampling)
+head(as.data.table(rr), 2)
+
+e = rr$experiment(1)
+@
+\end{vframe}

@@ -1,0 +1,21 @@
+The course will enable the participants to understand and practically apply the most important
+building blocks of machine learning experiments with the mlr package in supervised and
+unsupervised machine learning, i.e. classification, regression, survival analysis and clustering.
+
+The mlr package allows data analysts who are neither experts in machine learning nor seasoned R programmers to
+specify complex machine learning experiments in short, succinct and scalable code.
+Experienced programmers, on the other hand, get to wield a large, well-designed toolbox, which they
+can easily customize and extend to their needs.
+
+The participants will learn how to perform basic mlr operations like data
+import, data preprocessing, model building, performance evaluation and resampling.
+Using these basic building blocks, we will focus on more advanced topics like
+benchmarking, model selection and hyperparameter tuning.
+We will also demonstrate how to easily parallelize the most time-consuming operations in common parallel environments.
+The course will end with a short demonstration on how to access the new OpenML server for open machine
+learning (http://www.openml.org) which provides a large repository of benchmark data sets and
+enables reproducible experiments and meta analysis.
+
+Link for further details can be found on the useR2015 wiki page:
+
+https://github.com/berndbischl/mlr/wiki/useR-2015-tutorial

@@ -1,0 +1,56 @@
+\begin{frame}[fragile]{Extracting non-functional features}
+\begin{figure}
+\begin{center}
+\includegraphics[scale = 0.3]{figure/ft.png}
+\end{center}
+\caption{Source: \url{https://aavos.eu/glossary/fourier-transform/}}
+\end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Extracting features}
+\textbf{Currently implemented}
+\begin{itemize}
+\item Fourier Transformation
+\item Functional Principal Components
+\item Wavelets
+\item Spline Coefficients
+\item ...
+\end{itemize}
+<<cache=TRUE>>=
+# Define what to extract from which feature
+feat.methods = list("UVVIS" = extractFDAFourier(), "NIR" = extractFDAFPCA())
+extracted.task = extractFDAFeatures(fuelsubset.task, feat.methods = feat.methods)
+@
+\end{frame}
+
+\begin{frame}[fragile]{Wrappers}
+Feature extraction can be used in conjunction with standard ML learners:
+\begin{small}
+<<cache=TRUE>>=
+# Wrap the feature extraction arround a learner
+lrn = makeLearner(id = "xgb", cl = "regr.xgboost") %>%
+  makeExtractFDAFeatsWrapper(feat.methods = feat.methods)
+train(lrn, fuelsubset.task)
+@
+\end{small}
+\end{frame}
+
+\begin{frame}[fragile]{Tuning the wrapper}
+<<cache = TRUE, message = FALSE, warning=FALSE>>=
+# Define the param space to search over
+ps = makeParamSet(
+  makeNumericParam("eta", lower = 0.003, upper = 0.25),
+  makeNumericParam("alpha", lower = 0.001, upper = 5),
+  makeNumericParam("pve", lower = 0.95, upper = 0.99),
+  makeDiscreteParam("trafo.coeff", values = c("amplitude", "phase"))
+  )
+# Define how we tune
+ctrl = makeTuneControlRandom(maxit = 5)
+# Create the learner and the wrapper(s)
+lrn = makeLearner("regr.xgboost") %>%
+  makeExtractFDAFeatsWrapper(feat.methods = feat.methods) %>%
+  makeTuneWrapper(hout, rmse, ps, ctrl)
+res = resample(lrn, fuelsubset.task, hout, rmse)
+@
+\end{frame}
+

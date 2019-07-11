@@ -1,0 +1,15 @@
+base
+prettycode
+knitr
+microbenchmark
+snow
+BBmisc
+ParamHelpers
+mlr
+ggplot2
+parallelMap
+tikzDevice
+data.table
+gridExtra
+survival
+survMisc

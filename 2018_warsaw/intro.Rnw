@@ -1,0 +1,289 @@
+% - Agenda
+% - ML intro
+% - The project
+% - Motivation
+% - mlr blocks
+% - start demo
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Agenda}
+  \begin{itemize}
+		\item About \pkg{mlr}
+		\item Features of \pkg{mlr}
+		\begin{itemize}
+			\item Tasks and Learners
+			\item Train, Test, Resample
+			\item Performance 
+			\item Benchmarking
+			\item Hyperparameter Tuning
+			\item Nested Resampling
+			\item Parallelization
+		\end{itemize}
+    \item \pkg{mlrMBO} - Bayesian Optimization
+    \item \pkg{mlrCPO} - Composable Preprocessing
+		\item \pkg{iml} - Interpretable Machine Learning
+		\item OpenML
+		\item Outlook and \pkg{mlr} contribution
+	\end{itemize}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ML intro                          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Machine Learning}
+
+  \begin{columns}
+    \column{.3\textwidth}
+      \begin{figure}
+        \includegraphics[width=\textwidth]{figure/gears.png}
+      \end{figure}
+
+    \column{0.6\textwidth}
+      \begingroup
+        \centering
+        \fontsize{20pt}{22pt}\selectfont
+        \vspace{1cm}
+        \\
+        Machine Learning is a method of teaching computers to make predictions 
+        based on some data.
+        \endgroup
+  \end{columns}
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% about mlr                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Motivation: \pkg{mlr}}
+  \begin{blocki}{The good news}
+  \item CRAN serves hundreds of packages for machine learning
+  \item Often compliant to the unwritten interface definition:
+  \end{blocki}
+  \vspace{-5mm}
+
+<<model-standard,eval=FALSE>>=
+model = fit(target ~ ., data = train.data, ...)
+predictions = predict(model, newdata = test.data, ...)
+@
+  \vspace{-5mm}
+  
+  \begin{blocki}{The bad news}
+    \item Some packages API is \enquote{just different}
+    \item Functionality is always package or model-dependent, even though the procedure might be general
+    \item No meta-information available or buried in docs 
+  \end{blocki}
+  \vspace{-5mm}
+  \oneliner{Our goal: A domain-specific language for ML concepts!}
+
+
+\framebreak
+
+  \begin{itemize}
+    \item Project home page\\
+    \oneliner{\url{https://github.com/mlr-org/mlr}}
+      \begin{itemize}
+      	\item \href{https://github.com/mlr-org/mlr-tutorial/raw/gh-pages/cheatsheet/MlrCheatsheet.pdf}{\underline{Cheatsheet} for an quick overview}
+      	\item \href{https://mlr-org.github.io/mlr/}{\underline{Tutorial} for mlr documentation with many code examples}
+        \item \href{https://github.com/mlr-org/mlr/issues}{Ask questions in the \underline{GitHub issue tracker}}
+      \end{itemize}
+  \vspace{1 mm}
+    \item 8-10 main developers, quite a few contributors, 4 GSOC projects in 2015/16 and 
+    one coming in 2017
+    \item About 20K lines of code, 8K lines of unit tests
+      \end{itemize}
+
+\framebreak
+
+  \begin{itemize}
+    \item Unified interface for the basic building blocks: tasks, learners, hyperparameters, \ldots
+  \end{itemize}
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{figure/mlrProcessNoResample.png}
+  \end{center}
+
+<<gatherSummary,include=FALSE>>=
+ee = as.environment("package:mlr")
+nl = table(sub("^makeRLearner\\.([[:alpha:]]+)\\..+", "\\1", methods("makeRLearner")))
+nm = sapply(list(classif = listMeasures("classif"), regr = listMeasures("regr"), surv = listMeasures("surv"), cluster = listMeasures("cluster")), length) - 4
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \begin{vframe}{Why \pkg{mlr}}
+%   Vergleich von mlr/ caret/ sklearn/ weka \\
+%   \begin{center}
+%     \begin{tabular}{l l l l l}
+%       & \pkg{mlr} & \pkg{caret} & \pkg{sklearn} & \pkg{weka} \\
+%       Platform & R & & & \\
+%       Preprocessing & & & & \\
+%       Learning methods & & & & \\
+%       
+%     \end{tabular}
+%   \end{center}
+% \end{vframe}
+
+\end{vbframe}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{R Example: Titanic}
+  \oneliner{Titanic: Machine Learning from Disaster}
+
+  \begin{itemize}
+    \item Titanic sinking on April 15, 1912
+    \item Data provided on our website \url{goo.gl/DYzSmA}
+    \item 809 out of 1309 passengers got killed
+    \item Task
+      \begin{itemize}
+        \item Can we predict who survived? 
+        \item Why did people die / Which groups?
+      \end{itemize}
+  \end{itemize}
+  
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{figure/titanic.png}
+  \end{center}
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{R Example: Data set}
+  \begin{itemize}
+    \item Data Dictionary \\
+      \begin{tabular}{l l}
+        \texttt{Survived} & Survived, 0 = No, 1 = Yes \\
+        \texttt{Pclass} & Ticket class, from 1st to 3rd \\
+        \texttt{Sex} & Sex \\
+        \texttt{Age} & Age in years \\
+        \texttt{Sibsp} & \# of siblings/ spouses \\
+        \texttt{Parch} & \# of parents/ children \\
+        \texttt{Ticket} & Ticket number \\
+        \texttt{Fare} & Passenger fare \\
+        \texttt{Cabin} & Cabin number \\
+        \texttt{Embarked} & Port of Embarkation 
+      \end{tabular}
+  \end{itemize}
+  
+\end{vframe}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+<<libraries, echo=FALSE, eval=TRUE, warning=FALSE>>=
+library(mlr)
+library(stringi)
+library(BBmisc)
+library(ggplot2)
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vbframe}{Preprocessing}
+  \begin{itemize}
+    \item Load the input data
+  \end{itemize}
+  
+<<dataImport, eval=TRUE>>=
+load("data.rda")
+print(summarizeColumns(data)[, -c(5, 6, 7)], digits = 0)
+@
+
+\framebreak
+
+  \begin{itemize}
+  \item NB: All preprocessing steps are really naive, later we show better preprocessing with \pkg{mlrCPO} 
+    \item Set empty factor levels to NA
+  \end{itemize}
+
+<<eval=TRUE>>=
+data$Embarked[data$Embarked == ""] = NA
+data$Embarked = droplevels(data$Embarked)
+data$Cabin[data$Cabin == ""] = NA
+data$Cabin = droplevels(data$Cabin)
+@
+
+\framebreak
+    
+<<feat1, eval=TRUE, warning=FALSE>>=
+# Price per person, multiple tickets bought by one 
+# person
+data$farePp = data$Fare / (data$Parch + data$Sibsp + 1)
+
+# The deck can be extracted from the the cabin number
+data$deck = as.factor(stri_sub(data$Cabin, 1, 1))
+
+# Starboard had an odd number, portside even cabin 
+# numbers
+data$portside = stri_sub(data$Cabin, 3, 3) 
+data$portside = as.numeric(data$portside) %% 2
+
+# Drop stuff we cannot easily model on
+data = dropNamed(data, 
+  c("Cabin","PassengerId", "Ticket", "Name"))
+@
+
+\end{vbframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Preprocessed data}
+<<>>=
+print(summarizeColumns(data)[, -c(5, 6, 7)], digits = 0)
+@
+
+\end{vframe}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{vframe}{Imputation}
+  \begin{itemize}
+    \item Impute numerics with median and factors with a seperate category
+    \item NB: This is really naive, we should probably use multiple imputation and
+      embed this in cross-valdiation
+  \end{itemize}
+  
+<<>>=
+data = impute(data, cols = list(
+  Age = imputeMedian(),
+  Fare = imputeMedian(),
+  Embarked = imputeConstant("__miss__"),
+  farePp = imputeMedian(),
+  deck = imputeConstant("__miss__"),
+  portside = imputeConstant("__miss__")
+))
+
+data = data$data
+data = convertDataFrameCols(data, chars.as.factor = TRUE)
+@
+
+\end{vframe}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\begin{vbframe}{Tasks}
+
+\begin{itemize}
+  \item Create classification problem
+\end{itemize}
+    
+<<>>=
+task = makeClassifTask(id = "titanic", data = data, 
+  target = "Survived", positive = "1")
+@
+
+\framebreak
+
+<<>>=
+print(task)
+@
+
+
+\end{vbframe}
